@@ -171,25 +171,23 @@ def parse_search_results(text: str) -> list[SearchResult]:
             entity_type = line[3:bracket_end]
             rest = line[bracket_end + 2 :]
 
-            # Extract UUID (in parentheses at end)
+            # Extract UUID (first paren group) and optional size (second paren group)
             uuid = ""
             name = rest
-            if "(" in rest:
-                paren_start = rest.rindex("(")
-                paren_end = rest.rindex(")")
-                uuid = rest[paren_start + 1 : paren_end]
-                name = rest[:paren_start].strip()
-
-            # Extract optional size
             size_kb = None
-            if "KB" in uuid:
-                parts = uuid.split("(")
-                uuid = parts[0].strip()
-                size_str = parts[1].replace(")", "").replace("KB", "").strip()
-                try:
-                    size_kb = float(size_str)
-                except ValueError:
-                    pass
+            if "(" in rest:
+                uuid_start = rest.index("(")
+                uuid_end = rest.index(")")
+                uuid = rest[uuid_start + 1 : uuid_end]
+                name = rest[:uuid_start].strip()
+                # Check for size in remaining text
+                remaining = rest[uuid_end + 1 :]
+                if "KB" in remaining and "(" in remaining:
+                    size_part = remaining.split("(")[1].replace(")", "").replace("KB", "").strip()
+                    try:
+                        size_kb = float(size_part)
+                    except ValueError:
+                        pass
 
             results.append(SearchResult(name=name, uuid=uuid, type=entity_type, file="", size_kb=size_kb))
         except (ValueError, IndexError):
