@@ -129,6 +129,41 @@ pi_shutdown() {
     $_MAGMASCRIPT pi shutdown
 }
 
+# ── GitHub helpers ───────────────────────────────────────────────────────────
+
+gh_workflows() {
+    $_MAGMASCRIPT gh workflows
+}
+
+gh_workflow() {
+    $_MAGMASCRIPT gh workflow "$@"
+}
+
+gh_trigger() {
+    $_MAGMASCRIPT gh trigger "$@"
+}
+
+gh_issues() {
+    $_MAGMASCRIPT gh issues "$@"
+}
+
+gh_issue_create() {
+    $_MAGMASCRIPT gh issue create "$@"
+}
+
+gh_issue_close() {
+    $_MAGMASCRIPT gh issue close "$@"
+}
+
+gh_file() {
+    $_MAGMASCRIPT gh file "$@"
+}
+
+gh_repo() {
+    $_MAGMASCRIPT gh repo
+}
+
 echo "magmascript shell helpers loaded."
 echo "MCP: mcp_search, mcp_scoreboards, mcp_scores, mcp_bots, ..."
 echo "Pi:  pi_status, pi_logs, pi_restart, pi_info, pi_traffic, ..."
+echo "GH:  gh_workflows, gh_trigger, gh_issues, gh_file, ..."

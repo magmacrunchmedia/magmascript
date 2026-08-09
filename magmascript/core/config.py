@@ -32,11 +32,21 @@ class PIConfig:
 
 
 @dataclass
+class GHConfig:
+    """GitHub API configuration."""
+
+    token: str = ""
+    owner: str = "magmacrunchmedia"
+    repo: str = "magmacrunch.com"
+
+
+@dataclass
 class Config:
     """Top-level magmascript configuration."""
 
     mcp: MCPConfig = field(default_factory=MCPConfig)
     pi: PIConfig = field(default_factory=PIConfig)
+    gh: GHConfig = field(default_factory=GHConfig)
 
 
 def _load_toml(path: Path) -> dict:
@@ -65,6 +75,7 @@ def load_config(*, config_path: Path | None = None, env_prefix: str = "MAGMA_") 
     toml = _load_toml(cfg_file)
     mcp_section = toml.get("mcp", {})
     pi_section = toml.get("pi", {})
+    gh_section = toml.get("gh", {})
 
     return Config(
         mcp=MCPConfig(
@@ -76,6 +87,13 @@ def load_config(*, config_path: Path | None = None, env_prefix: str = "MAGMA_") 
         pi=PIConfig(
             host=os.environ.get(f"{env_prefix}PI_HOST", pi_section.get("host", "192.168.1.16")),
             user=os.environ.get(f"{env_prefix}PI_USER", pi_section.get("user", "jake")),
+        ),
+        gh=GHConfig(
+            token=os.environ.get(f"{env_prefix}GH_TOKEN")
+            or os.environ.get("GITHUB_TOKEN", "")
+            or gh_section.get("token", ""),
+            owner=os.environ.get(f"{env_prefix}GH_OWNER", gh_section.get("owner", "magmacrunchmedia")),
+            repo=os.environ.get(f"{env_prefix}GH_REPO", gh_section.get("repo", "magmacrunch.com")),
         ),
     )
 

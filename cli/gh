@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# magmascript GitHub wrapper — shorthand for GitHub operations
+#
+# Usage:
+#   gh workflows
+#   gh trigger "Deploy to Pi"
+#   gh issues
+#   gh repo
+#
+# Install:
+#   chmod +x cli/gh
+#   ln -s $(pwd)/cli/gh ~/bin/gh-magmascript
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# If magmascript is installed as a package, use it
+if command -v magmascript &>/dev/null; then
+    exec magmascript gh "$@"
+fi
+
+# Otherwise, run from source
+exec python3 -m magmascript.cli gh "$@"

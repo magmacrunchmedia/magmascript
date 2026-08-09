@@ -24,6 +24,7 @@ Usage:
 Domains:
     mcp         MagmaCrunch MCP server tools
     pi          Raspberry Pi management (direct SSH)
+    gh          GitHub operations (direct API)
 
 MCP Actions:
     search <query>              Search cached MusicBrainz entities
@@ -56,6 +57,16 @@ Pi Actions:
     deploy <path> [service]     Deploy to Pi via rsync
     reboot                      Reboot the Pi
     shutdown                    Power off the Pi
+
+GitHub Actions:
+    workflows                   List all workflows with status
+    workflow <name>             Recent runs for one workflow
+    trigger <name>              Trigger a workflow
+    issues [label] [state]      List issues
+    issue create <title> [body] Create an issue
+    issue close <number>        Close an issue
+    file <path>                 Read a file from the repo
+    repo                        Repo info (test connection)
 
 Options:
     --json                      Output as JSON
@@ -101,8 +112,16 @@ def main():
         finally:
             client.close()
 
+    elif domain == "gh":
+        from magmascript.domains.gh import GHClient
+        client = GHClient(config)
+        try:
+            _dispatch_gh(action, rest, client, fmt)
+        finally:
+            client.close()
+
     else:
-        print(f"Unknown domain: {domain!r}. Available: mcp, pi", file=sys.stderr)
+        print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh", file=sys.stderr)
         sys.exit(1)
 
 
@@ -281,6 +300,80 @@ def _dispatch_pi(action: str, args: list[str], client, fmt: str):
     else:
         print(f"Unknown Pi action: {action!r}", file=sys.stderr)
         print("Run 'magmascript pi --help' for available actions.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _dispatch_gh(action: str, args: list[str], client, fmt: str):
+    """Dispatch GitHub subcommands."""
+    if not action or action == "--help":
+        usage()
+
+    if action == "workflows":
+        results = client.workflows()
+        print(format_output(results, fmt))
+
+    elif action == "workflow":
+        if not args:
+            print("Usage: gh workflow <name>", file=sys.stderr)
+            sys.exit(1)
+        limit = int(args[1]) if len(args) > 1 else 10
+        results = client.workflow_runs(args[0], limit)
+        print(format_output(results, fmt))
+
+    elif action == "trigger":
+        if not args:
+            print("Usage: gh trigger <name>", file=sys.stderr)
+            sys.exit(1)
+        result = client.trigger(args[0])
+        print(result)
+
+    elif action == "issues":
+        labels = args[0] if args else ""
+        state = args[1] if len(args) > 1 else "open"
+        results = client.issues(labels=labels, state=state)
+        print(format_output(results, fmt))
+
+    elif action == "issue":
+        if not args:
+            print("Usage: gh issue create <title> [body] | gh issue close <number>", file=sys.stderr)
+            sys.exit(1)
+        sub = args[0]
+        if sub == "create":
+            if len(args) < 2:
+                print("Usage: gh issue create <title> [body]", file=sys.stderr)
+                sys.exit(1)
+            title = args[1]
+            body = args[2] if len(args) > 2 else ""
+            result = client.create_issue(title, body)
+            print(format_output(result, fmt))
+        elif sub == "close":
+            if len(args) < 2:
+                print("Usage: gh issue close <number>", file=sys.stderr)
+                sys.exit(1)
+            result = client.close_issue(int(args[1]))
+            print(result)
+        else:
+            print(f"Unknown issue action: {sub!r}. Use 'create' or 'close'.", file=sys.stderr)
+            sys.exit(1)
+
+    elif action == "file":
+        if not args:
+            print("Usage: gh file <path>", file=sys.stderr)
+            sys.exit(1)
+        content, sha = client.get_file(args[0])
+        print(content)
+
+    elif action == "repo":
+        info = client.repo_info()
+        print(f"  Name: {info.get('full_name', '?')}")
+        print(f"  Private: {info.get('private', '?')}")
+        print(f"  Default branch: {info.get('default_branch', '?')}")
+        print(f"  Stars: {info.get('stargazers_count', '?')}")
+        print(f"  Forks: {info.get('forks_count', '?')}")
+
+    else:
+        print(f"Unknown GitHub action: {action!r}", file=sys.stderr)
+        print("Run 'magmascript gh --help' for available actions.", file=sys.stderr)
         sys.exit(1)
 
 
