@@ -188,6 +188,54 @@ class ScoresClient:
         )
 
     # ------------------------------------------------------------------
+    # Write operations
+    # ------------------------------------------------------------------
+
+    def reset(self, game_id: str) -> str:
+        """Reset scores for one game. Creates a timestamped backup first.
+
+        Args:
+            game_id: Game ID (e.g. "tetris", "george-boole")
+        """
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup_dir = f"{SCORES_DIR}/backup"
+
+        # Create backup dir if needed, backup the file, then write empty scores
+        self._ssh(
+            f"mkdir -p {backup_dir} && "
+            f"cp {SCORES_DIR}/{game_id}.json {backup_dir}/{game_id}-{ts}.json && "
+            f'echo \'{{"game":"{game_id}","scores":[]}}\' > {SCORES_DIR}/{game_id}.json'
+        )
+        # Clear cache so next read reflects the reset
+        self._cache.clear(domain="scores")
+        return f"✓ Reset {game_id} (backup: {game_id}-{ts}.json)"
+
+    def reset_all(self) -> str:
+        """Reset all game scores. Creates timestamped backups for each."""
+        files = self._list_files()
+        if not files:
+            return "No score files found"
+
+        ts = datetime.now().strftime("%Y%m%d-%H%M%S")
+        backup_dir = f"{SCORES_DIR}/backup"
+        reset_games = []
+
+        for fn in files:
+            game_id = fn.removesuffix(".json")
+            try:
+                self._ssh(
+                    f"mkdir -p {backup_dir} && "
+                    f"cp {SCORES_DIR}/{fn} {backup_dir}/{game_id}-{ts}.json && "
+                    f'echo \'{{"game":"{game_id}","scores":[]}}\' > {SCORES_DIR}/{fn}'
+                )
+                reset_games.append(game_id)
+            except SSHError:
+                continue
+
+        self._cache.clear(domain="scores")
+        return f"✓ Reset {len(reset_games)} games: {', '.join(reset_games)}"
+
+    # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 

@@ -82,6 +82,8 @@ Pi Actions:
     deploy <path> [service]     Deploy to Pi via rsync
     reboot                      Reboot the Pi
     shutdown                    Power off the Pi
+    backup musicbrainz          Run MusicBrainz backup + commit to GitHub
+    backup tmdb                 Run TMDB backup + commit to GitHub
 
 GitHub Actions:
     workflows                   List all workflows with status
@@ -103,6 +105,8 @@ Scores:
     list                        List all games with entry counts
     get <game> [limit]          Get leaderboard for a game (default top 20)
     report                      Generate full markdown report
+    reset <game>                Reset scores for one game (backup created)
+    reset-all                   Reset all game scores
 
 Rights:
     search <query>              Search by title, ISRC, ISWC, or ASCAP ID
@@ -389,6 +393,64 @@ def _dispatch_pi(action: str, args: list[str], client, fmt: str):
         result = client.shutdown()
         print(result)
 
+    elif action == "backup":
+        if not args or args[0] not in ("musicbrainz", "tmdb"):
+            print("Usage: pi backup <musicbrainz|tmdb>", file=sys.stderr)
+            sys.exit(1)
+        backup_type = args[0]
+        message = ""
+        if "--message" in args:
+            idx = args.index("--message")
+            if idx + 1 < len(args):
+                message = args[idx + 1]
+
+        print(f"Running {backup_type} backup on Pi...")
+        result = client.run_backup(backup_type, timeout=600)
+        print(result)
+
+        # Pull changed files from Pi and commit
+        from magmascript.core.config import get_config
+        config = get_config()
+        pi_host = config.pi.host
+        pi_user = config.pi.user
+
+        print("Pulling cache from Pi...")
+        import subprocess
+        subprocess.run(
+            ["rsync", "-avz",
+             f"{pi_user}@{pi_host}:~/website/archive/_cache/", "archive/_cache/"],
+            capture_output=True, text=True, timeout=60,
+        )
+
+        # Check for changes
+        git_result = subprocess.run(
+            ["git", "diff", "--name-only", "archive/_cache/"],
+            capture_output=True, text=True, timeout=10,
+        )
+        changed = [f for f in git_result.stdout.strip().splitlines() if f]
+
+        if not changed:
+            print("No cache files changed.")
+            return
+
+        print(f"Found {len(changed)} changed file(s). Committing...")
+        from magmascript.domains.gh import GHClient
+        gh = GHClient(config)
+        try:
+            files = []
+            for path in changed:
+                try:
+                    with open(path) as f:
+                        files.append({"path": path, "content": f.read()})
+                except Exception:
+                    continue
+            if files:
+                msg = message or f"Update {backup_type} cache via magmascript"
+                result = gh.commit_multiple(files, msg)
+                print(result)
+        finally:
+            gh.close()
+
     else:
         print(f"Unknown Pi action: {action!r}", file=sys.stderr)
         print("Run 'magmascript pi --help' for available actions.", file=sys.stderr)
@@ -616,6 +678,25 @@ def _dispatch_scores(action: str, args: list[str], client, fmt: str):
             names = ", ".join(p.name for p in report.player_stats)
             lines.append(f"- **Players**: {names}")
         print("\n".join(lines))
+
+    elif action == "reset":
+        if not args:
+            print("Usage: scores reset <game>", file=sys.stderr)
+            sys.exit(1)
+        confirm = input(f"Reset all scores for {args[0]}? This creates a backup. [y/N] ")
+        if confirm.lower() != "y":
+            print("Cancelled.")
+            sys.exit(0)
+        result = client.reset(args[0])
+        print(result)
+
+    elif action == "reset-all":
+        confirm = input("Reset ALL high scores across ALL games? This creates backups. [y/N] ")
+        if confirm.lower() != "y":
+            print("Cancelled.")
+            sys.exit(0)
+        result = client.reset_all()
+        print(result)
 
     else:
         print(f"Unknown scores action: {action!r}", file=sys.stderr)
