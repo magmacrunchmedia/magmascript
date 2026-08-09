@@ -48,6 +48,8 @@ Domains:
     lastfm      Last.fm API client
     search      Site search index builder
     cache       Cache management (stats, clear)
+    run         Run a MagmaScript (.mgs) file
+    repl        Start interactive MagmaScript REPL
 
 MCP Actions:
     search <query>              Search cached MusicBrainz entities
@@ -283,8 +285,15 @@ def main():
         elif domain == "cache":
             _dispatch_cache(action, rest, fmt)
 
+        elif domain == "run":
+            _dispatch_run(action, rest)
+
+        elif domain == "repl":
+            from magmascript.repl import repl
+            repl()
+
         else:
-            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, archive, mb, lastfm, search, cache", file=sys.stderr)
+            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, archive, mb, lastfm, search, cache, run, repl", file=sys.stderr)
             sys.exit(1)
 
     except KeyboardInterrupt:
@@ -295,6 +304,43 @@ def main():
         sys.exit(1)
     except ValueError as e:
         print(f"Invalid input: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _dispatch_run(action: str, args: list[str]):
+    """Dispatch run subcommands for .mgs files."""
+    if not action or action == "--help":
+        print("""Usage: magmascript run <script.mgs> [args...]
+
+Run a MagmaScript (.mgs) file.
+
+Options:
+    --help    Show this help
+""")
+        sys.exit(0)
+
+    from pathlib import Path
+    script_path = Path(action)
+    if not script_path.exists():
+        print(f"Error: File not found: {script_path}", file=sys.stderr)
+        sys.exit(1)
+
+    if not script_path.suffix == ".mgs":
+        print(f"Warning: File does not have .mgs extension: {script_path}", file=sys.stderr)
+
+    try:
+        source = script_path.read_text()
+        from magmascript.lang.interpreter import Interpreter
+        from magmascript.lang.parser import parse
+
+        program = parse(source)
+        interpreter = Interpreter()
+        interpreter.run(program)
+    except KeyboardInterrupt:
+        print("\nInterrupted.", file=sys.stderr)
+        sys.exit(130)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 

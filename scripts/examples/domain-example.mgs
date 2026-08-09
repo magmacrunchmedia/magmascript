@@ -1,0 +1,29 @@
+// domain-example.mgs — Using domain objects
+
+// Search for artists
+// Note: This requires the MCP server to be running
+// results = mcp.search("aphex twin")
+// for r in results {
+//     print(f"Found: {r.name} ({r.type})")
+// }
+
+// List scoreboards
+// boards = mcp.scoreboards()
+// for board in boards {
+//     if board.entries > 5 {
+//         print(f"{board.game}: {board.entries} entries, top: {board.top.score}")
+//     }
+// }
+
+// For now, just show domain objects exist
+print("Domain objects available:")
+print("  mcp - MusicBrainz/Archive MCP tools")
+print("  pi  - Raspberry Pi management")
+print("  gh  - GitHub operations")
+print("  media - Multi-provider media search")
+print("  scores - Game high scores")
+print("  rights - Music rights metadata")
+
+// Show how to use domains (uncomment when MCP server is running)
+// boards = mcp.scoreboards()
+// print(f"Found {len(boards)} scoreboards")
