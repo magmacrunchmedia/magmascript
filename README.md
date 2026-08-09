@@ -40,6 +40,80 @@ repo = "magmacrunch.com"
 root = "/path/to/magmacrunch.com"
 ```
 
+## MagmaScript Language
+
+Write `.mgs` scripts using a Python-inspired mini language with direct access to all domains.
+
+### Quick Start
+
+```bash
+# Run a script
+magmascript run scripts/examples/hello.mgs
+
+# Start interactive REPL
+magmascript repl
+```
+
+### Syntax Overview
+
+```magmascript
+// Variables
+name = "MagmaCrunch"
+version = 2
+
+// String interpolation
+print(f"Hello, {name} v{version}!")
+
+// Functions
+double = fn(x) { x * 2 }
+result = double(21)
+
+// Arrow functions
+triple = x -> x * 3
+
+// Control flow
+if x > 10 {
+    print("big")
+} else {
+    print("small")
+}
+
+// Loops
+for i in range(5) {
+    print(i)
+}
+
+while x > 0 {
+    x = x - 1
+}
+
+// Domain calls work directly
+boards = mcp.scoreboards()
+for board in boards {
+    print(f"{board.game}: {board.entries} entries")
+}
+```
+
+### Built-in Functions
+
+| Function | Description |
+|----------|-------------|
+| `print(...)` | Print to stdout |
+| `len(x)` | Length of string or list |
+| `type(x)` | Type name as string |
+| `range(n)` | List of integers 0..n-1 |
+| `str(x)`, `int(x)`, `float(x)` | Type conversions |
+| `abs(x)`, `min(...)`, `max(...)`, `sum(...)` | Math utilities |
+| `keys(d)`, `values(d)` | Dict operations |
+
+### Example Scripts
+
+See `scripts/examples/` for working examples:
+- `hello.mgs` — Hello World and basic features
+- `fibonacci.mgs` — Recursive functions and loops
+- `domain-example.mgs` — Using domain objects
+- `top-scores.mgs` — Working with scoreboards
+
 ## Domains
 
 ### MCP Domain — MusicBrainz, scores, Discogs, write operations
