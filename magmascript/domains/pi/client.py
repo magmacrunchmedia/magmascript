@@ -1,14 +1,13 @@
-"""Pi domain — direct SSH client for Raspberry Pi management.
+"""Pi domain — direct client for Raspberry Pi management.
 
+Supports both SSH (remote) and local execution modes.
 Bypasses the MCP server for faster, more capable Pi operations.
 """
 
 from __future__ import annotations
 
-import subprocess
-
 from magmascript.core.config import Config, get_config
-from magmascript.core.exceptions import SSHError
+from magmascript.core.runner import CommandRunner
 from magmascript.domains.pi.tools import (
     NginxTraffic,
     PiServiceStatus,
@@ -19,73 +18,19 @@ from magmascript.domains.pi.tools import (
 
 
 class PIClient:
-    """Direct SSH client for Raspberry Pi management.
+    """Direct client for Raspberry Pi management.
 
-    All commands SSH directly to the Pi — no MCP server in the middle.
+    In remote mode (default), commands run via SSH.
+    In local mode (local=True), commands run via subprocess on the local machine.
     Raises SSHError on connection or command failures.
     """
 
-    def __init__(self, config: Config | None = None):
+    def __init__(self, config: Config | None = None, *, local: bool = False):
         cfg = config or get_config()
         self._host = cfg.pi.host
         self._user = cfg.pi.user
-
-    def _ssh(self, cmd: str, *, timeout: int = 15) -> str:
-        """Run a command on the Pi via SSH. Returns stdout.
-
-        Raises SSHError on connection failure, timeout, or non-zero exit.
-        """
-        try:
-            result = subprocess.run(
-                [
-                    "ssh",
-                    "-o", "ConnectTimeout=5",
-                    "-o", "StrictHostKeyChecking=no",
-                    f"{self._user}@{self._host}",
-                    cmd,
-                ],
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-            )
-            if result.returncode != 0:
-                stderr = result.stderr.strip()
-                raise SSHError(
-                    f"SSH command failed (exit {result.returncode}): {stderr or result.stdout.strip()}",
-                    host=self._host,
-                    code=result.returncode,
-                )
-            return result.stdout.strip()
-        except subprocess.TimeoutExpired:
-            raise SSHError(f"SSH connection to {self._host} timed out", host=self._host)
-        except SSHError:
-            raise
-        except Exception as e:
-            raise SSHError(f"SSH connection to {self._host} failed: {e}", host=self._host)
-
-    def _rsync(self, local_path: str, remote_path: str, *, delete: bool = True) -> str:
-        """Sync files to the Pi via rsync. Returns stdout.
-
-        Raises SSHError on failure.
-        """
-        cmd = ["rsync", "-avz"]
-        if delete:
-            cmd.append("--delete")
-        cmd.append(local_path)
-        cmd.append(f"{self._user}@{self._host}:{remote_path}")
-        try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
-            if result.returncode != 0:
-                raise SSHError(
-                    f"rsync failed: {result.stderr.strip()}",
-                    host=self._host,
-                    code=result.returncode,
-                )
-            return result.stdout.strip()
-        except SSHError:
-            raise
-        except Exception as e:
-            raise SSHError(f"rsync to {self._host} failed: {e}", host=self._host)
+        self._local = local
+        self._runner = CommandRunner(cfg.pi.host, cfg.pi.user, local=local)
 
     # ------------------------------------------------------------------
     # Service management
@@ -96,7 +41,7 @@ class PIClient:
 
         Raises SSHError on connection failure.
         """
-        stdout = self._ssh(
+        stdout = self._runner.run(
             "systemctl list-units --type=service --all --no-legend | grep arcade | awk '{print $1}' | "
             "while read svc; do "
             "name=${svc%.service}; name=${name#arcade-}; "
@@ -111,14 +56,14 @@ class PIClient:
         Raises SSHError on connection failure.
         """
         unit = service if service.startswith("arcade-") else f"arcade-{service}"
-        return self._ssh(f"journalctl -u {unit} -n {lines} --no-pager 2>&1")
+        return self._runner.run(f"journalctl -u {unit} -n {lines} --no-pager 2>&1")
 
     def logs_errors(self, lines: int = 100) -> str:
         """Get error-level logs from all arcade services.
 
         Raises SSHError on connection failure.
         """
-        return self._ssh(
+        return self._runner.run(
             f"journalctl -u 'arcade-*' -p err -n {lines} --no-pager",
             timeout=15,
         )
@@ -128,7 +73,7 @@ class PIClient:
 
         Raises SSHError on connection failure.
         """
-        return self._ssh(
+        return self._runner.run(
             "journalctl -u 'arcade-*' --since today --no-pager",
             timeout=15,
         )
@@ -139,7 +84,7 @@ class PIClient:
         Raises SSHError on connection failure.
         """
         unit = service if service.startswith("arcade-") else f"arcade-{service}"
-        self._ssh(f"sudo systemctl restart {unit}", timeout=30)
+        self._runner.run(f"sudo systemctl restart {unit}", timeout=30)
         return f"✓ {unit} restarted"
 
     def restart_all(self) -> str:
@@ -147,7 +92,7 @@ class PIClient:
 
         Raises SSHError on connection failure.
         """
-        self._ssh("sudo systemctl restart 'arcade-*'", timeout=60)
+        self._runner.run("sudo systemctl restart 'arcade-*'", timeout=60)
         return "✓ All arcade services restarted"
 
     # ------------------------------------------------------------------
@@ -159,7 +104,7 @@ class PIClient:
 
         Raises SSHError on connection failure.
         """
-        stdout = self._ssh(
+        stdout = self._runner.run(
             'echo "UPTIME:$(uptime -p)" && '
             'echo "HOSTNAME:$(hostname)" && '
             'echo "MEMORY:$(free -h | awk \'/^Mem:/ {print $3"/"$2}\')" && '
@@ -177,19 +122,19 @@ class PIClient:
 
         Raises SSHError on connection failure.
         """
-        top_ips = self._ssh(
+        top_ips = self._runner.run(
             f"sudo tail -n {lines} /var/log/nginx/access.log | awk '{{print $1}}' | sort | uniq -c | sort -rn | head -15",
             timeout=15,
         )
-        status_codes = self._ssh(
+        status_codes = self._runner.run(
             f"sudo tail -n {lines} /var/log/nginx/access.log | awk '{{print $9}}' | sort | uniq -c | sort -rn",
             timeout=15,
         )
-        user_agents = self._ssh(
+        user_agents = self._runner.run(
             f"sudo tail -n {lines} /var/log/nginx/access.log | awk -F'\"' '{{print $6}}' | sort | uniq -c | sort -rn | head -15",
             timeout=15,
         )
-        total = self._ssh(
+        total = self._runner.run(
             "sudo wc -l < /var/log/nginx/access.log",
             timeout=15,
         )
@@ -211,10 +156,10 @@ class PIClient:
         """
         if "/" in local_path or local_path.endswith(".py") or local_path.endswith(".js"):
             remote = f"{self._host}:~/arcade/"
-            self._rsync(local_path, remote, delete=False)
+            self._runner.rsync(local_path, remote, delete=False)
         else:
             remote = f"{self._host}:~/arcade/"
-            self._rsync(f"{local_path}/", remote)
+            self._runner.rsync(f"{local_path}/", remote)
 
         output = f"✓ Deployed {local_path} to Pi"
 
@@ -233,7 +178,7 @@ class PIClient:
 
         Raises SSHError on connection failure.
         """
-        self._ssh("sudo reboot", timeout=10)
+        self._runner.run("sudo reboot", timeout=10)
         return "✓ Rebooting Pi..."
 
     def shutdown(self) -> str:
@@ -241,7 +186,7 @@ class PIClient:
 
         Raises SSHError on connection failure.
         """
-        self._ssh("sudo poweroff", timeout=10)
+        self._runner.run("sudo poweroff", timeout=10)
         return "✓ Shutting down Pi..."
 
     # ------------------------------------------------------------------
@@ -253,7 +198,7 @@ class PIClient:
 
         Args:
             backup_type: "musicbrainz" or "tmdb"
-            timeout: SSH timeout in seconds (default 600 for long-running backups)
+            timeout: timeout in seconds (default 600 for long-running backups)
 
         Returns:
             The script output
@@ -262,7 +207,7 @@ class PIClient:
             raise ValueError(f"Unknown backup type: {backup_type}. Use 'musicbrainz' or 'tmdb'")
 
         script = f"backup-{backup_type}.mjs"
-        return self._ssh(
+        return self._runner.run(
             f"cd ~/website && node scripts/{script} --skip-existing",
             timeout=timeout,
         )
@@ -272,7 +217,7 @@ class PIClient:
     # ------------------------------------------------------------------
 
     def close(self):
-        """No-op — SSH doesn't need cleanup."""
+        """No-op."""
         pass
 
     def __enter__(self):

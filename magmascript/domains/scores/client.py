@@ -1,19 +1,21 @@
-"""Scores domain — SSH to Pi to read score files directly.
+"""Scores domain — read score files from the Pi.
 
-Bypasses the MCP server — reads JSON files directly via SSH.
+Supports both SSH (remote) and local execution modes.
 Caches results for faster repeated queries.
 """
 
 from __future__ import annotations
 
+import glob
 import json
-import subprocess
 from dataclasses import asdict
 from datetime import datetime, timezone
+from pathlib import Path
 
 from magmascript.core.cache import CacheStore, get_cache
 from magmascript.core.config import Config, get_config
 from magmascript.core.exceptions import SSHError
+from magmascript.core.runner import CommandRunner
 from magmascript.domains.scores.tools import (
     DiscordPayload,
     PlayerStats,
@@ -26,56 +28,38 @@ SCORES_DIR = "~/arcade/admin/scores"
 
 
 class ScoresClient:
-    """Direct SSH client for reading score files from the Pi.
+    """Client for reading score files from the Pi.
 
+    Supports local mode (direct file I/O) and remote mode (SSH).
     Raises SSHError on connection failures.
     Caches results for faster repeated queries.
     """
 
-    def __init__(self, config: Config | None = None):
+    def __init__(self, config: Config | None = None, *, local: bool = False):
         cfg = config or get_config()
         self._host = cfg.pi.host
         self._user = cfg.pi.user
+        self._local = local
+        self._runner = CommandRunner(cfg.pi.host, cfg.pi.user, local=local)
         self._cache = get_cache(enabled=cfg.cache.enabled)
         self._cache_ttl = cfg.cache.ttl_scores
 
-    def _ssh(self, cmd: str, *, timeout: int = 15) -> str:
-        """Run a command on the Pi via SSH. Returns stdout."""
-        try:
-            result = subprocess.run(
-                [
-                    "ssh",
-                    "-o", "ConnectTimeout=5",
-                    "-o", "StrictHostKeyChecking=no",
-                    f"{self._user}@{self._host}",
-                    cmd,
-                ],
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-            )
-            if result.returncode != 0:
-                raise SSHError(
-                    f"SSH failed (exit {result.returncode}): {result.stderr.strip()}",
-                    host=self._host,
-                    code=result.returncode,
-                )
-            return result.stdout.strip()
-        except subprocess.TimeoutExpired:
-            raise SSHError(f"SSH to {self._host} timed out", host=self._host)
-        except SSHError:
-            raise
-        except Exception as e:
-            raise SSHError(f"SSH to {self._host} failed: {e}", host=self._host)
-
     def _read_json(self, filename: str) -> dict:
         """Read and parse a JSON file from the scores directory."""
-        stdout = self._ssh(f"cat {SCORES_DIR}/{filename}")
+        if self._local:
+            path = Path(SCORES_DIR).expanduser() / filename
+            return json.loads(path.read_text())
+        stdout = self._runner.run(f"cat {SCORES_DIR}/{filename}")
         return json.loads(stdout)
 
     def _list_files(self) -> list[str]:
         """List all .json files in the scores directory."""
-        stdout = self._ssh(f"ls {SCORES_DIR}/*.json 2>/dev/null || true")
+        if self._local:
+            path = Path(SCORES_DIR).expanduser()
+            if not path.is_dir():
+                return []
+            return [f.name for f in sorted(path.glob("*.json"))]
+        stdout = self._runner.run(f"ls {SCORES_DIR}/*.json 2>/dev/null || true")
         if not stdout:
             return []
         return [f.split("/")[-1] for f in stdout.splitlines()]
@@ -245,12 +229,20 @@ class ScoresClient:
         ts = datetime.now().strftime("%Y%m%d-%H%M%S")
         backup_dir = f"{SCORES_DIR}/backup"
 
-        # Create backup dir if needed, backup the file, then write empty scores
-        self._ssh(
-            f"mkdir -p {backup_dir} && "
-            f"cp {SCORES_DIR}/{game_id}.json {backup_dir}/{game_id}-{ts}.json && "
-            f'echo \'{{"game":"{game_id}","scores":[]}}\' > {SCORES_DIR}/{game_id}.json'
-        )
+        if self._local:
+            scores_path = Path(SCORES_DIR).expanduser() / f"{game_id}.json"
+            backup_path = Path(backup_dir).expanduser()
+            backup_path.mkdir(parents=True, exist_ok=True)
+            if scores_path.exists():
+                import shutil
+                shutil.copy2(scores_path, backup_path / f"{game_id}-{ts}.json")
+            scores_path.write_text(json.dumps({"game": game_id, "scores": []}))
+        else:
+            self._runner.run(
+                f"mkdir -p {backup_dir} && "
+                f"cp {SCORES_DIR}/{game_id}.json {backup_dir}/{game_id}-{ts}.json && "
+                f'echo \'{{"game":"{game_id}","scores":[]}}\' > {SCORES_DIR}/{game_id}.json'
+            )
         # Clear cache so next read reflects the reset
         self._cache.clear(domain="scores")
         return f"✓ Reset {game_id} (backup: {game_id}-{ts}.json)"
@@ -265,17 +257,31 @@ class ScoresClient:
         backup_dir = f"{SCORES_DIR}/backup"
         reset_games = []
 
-        for fn in files:
-            game_id = fn.removesuffix(".json")
-            try:
-                self._ssh(
-                    f"mkdir -p {backup_dir} && "
-                    f"cp {SCORES_DIR}/{fn} {backup_dir}/{game_id}-{ts}.json && "
-                    f'echo \'{{"game":"{game_id}","scores":[]}}\' > {SCORES_DIR}/{fn}'
-                )
-                reset_games.append(game_id)
-            except SSHError:
-                continue
+        if self._local:
+            import shutil
+            backup_path = Path(backup_dir).expanduser()
+            backup_path.mkdir(parents=True, exist_ok=True)
+            for fn in files:
+                game_id = fn.removesuffix(".json")
+                try:
+                    src = Path(SCORES_DIR).expanduser() / fn
+                    shutil.copy2(src, backup_path / f"{game_id}-{ts}.json")
+                    src.write_text(json.dumps({"game": game_id, "scores": []}))
+                    reset_games.append(game_id)
+                except Exception:
+                    continue
+        else:
+            for fn in files:
+                game_id = fn.removesuffix(".json")
+                try:
+                    self._runner.run(
+                        f"mkdir -p {backup_dir} && "
+                        f"cp {SCORES_DIR}/{fn} {backup_dir}/{game_id}-{ts}.json && "
+                        f'echo \'{{"game":"{game_id}","scores":[]}}\' > {SCORES_DIR}/{fn}'
+                    )
+                    reset_games.append(game_id)
+                except SSHError:
+                    continue
 
         self._cache.clear(domain="scores")
         return f"✓ Reset {len(reset_games)} games: {', '.join(reset_games)}"
