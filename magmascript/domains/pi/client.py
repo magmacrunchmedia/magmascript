@@ -245,6 +245,29 @@ class PIClient:
         return "✓ Shutting down Pi..."
 
     # ------------------------------------------------------------------
+    # Backups
+    # ------------------------------------------------------------------
+
+    def run_backup(self, backup_type: str, *, timeout: int = 600) -> str:
+        """Run a backup script on the Pi.
+
+        Args:
+            backup_type: "musicbrainz" or "tmdb"
+            timeout: SSH timeout in seconds (default 600 for long-running backups)
+
+        Returns:
+            The script output
+        """
+        if backup_type not in ("musicbrainz", "tmdb"):
+            raise ValueError(f"Unknown backup type: {backup_type}. Use 'musicbrainz' or 'tmdb'")
+
+        script = f"backup-{backup_type}.mjs"
+        return self._ssh(
+            f"cd ~/website && node scripts/{script} --skip-existing",
+            timeout=timeout,
+        )
+
+    # ------------------------------------------------------------------
     # Lifecycle
     # ------------------------------------------------------------------
 
