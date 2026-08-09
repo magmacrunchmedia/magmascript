@@ -1,73 +1,85 @@
 # magmascript
 
-Scripting toolkit with domain-first subcommands. Starts with MCP as the first domain, built to grow into a mini-language (`.ms` scripts).
+Scripting toolkit with domain-first subcommands for managing magmacrunch.com infrastructure.
 
 ## Install
 
 ```bash
-pip install -e ".[all]"
+git clone https://github.com/magmacrunchmedia/magmascript.git
+cd magmascript
+python3 -m venv .venv
+.venv/bin/pip install -e ".[all]"
 ```
 
-Or just use from source:
+## Configure
 
 ```bash
-python -m magmascript.cli mcp search "aphex twin"
+export MAGMA_API_KEY="your-mcp-key"
+export GITHUB_TOKEN=$(gh auth token)
+# pi domain works with no config (SSH key auth)
 ```
 
-## Config
+Or use `~/.config/magmascript/config.toml`:
 
-Set your API key via environment variable or config file:
-
-```bash
-# Environment
-export MAGMA_API_KEY="your-key-here"
-
-# Or config file: ~/.config/magmascript/config.toml
+```toml
 [mcp]
 url = "https://magmacrunch.duckdns.org/mcp"
-api_key = "your-key-here"
+api_key = "your-key"
+
+[pi]
+host = "192.168.1.16"
+user = "jake"
+
+[gh]
+token = "ghp_..."
+owner = "magmacrunchmedia"
+repo = "magmacrunch.com"
 ```
 
-## CLI Usage
+## Usage
 
+### MCP Domain — MusicBrainz, scores, Discogs
 ```bash
-# MusicBrainz search
-magmascript mcp search "aphex twin"
-magmascript mcp entities artists
+magmascript mcp scoreboards                  # game leaderboards
+magmascript mcp scores tetris                # tetris scores
+magmascript mcp search "radiohead"           # search MusicBrainz
+magmascript mcp entities                     # all cached entities
+magmascript mcp games                        # arcade games
+```
 
-# High scores
-magmascript mcp scoreboards
-magmascript mcp scores tetris
+### Pi Domain — Direct SSH to Raspberry Pi
+```bash
+magmascript pi status                        # all service statuses
+magmascript pi logs arcade-chat              # service logs
+magmascript pi restart arcade-chat           # restart service
+magmascript pi info                          # uptime, memory, temp
+magmascript pi deploy arcade/chat-server.py  # deploy files
+```
 
-# Pi services
-magmascript mcp pi-status
-magmascript mcp pi-logs arcade-chat
-magmascript mcp pi-info
-
-# GitHub bots
-magmascript mcp bots
-magmascript mcp trigger "Deploy to Pi"
-
-# Quick shell wrapper
-mcp search "radiohead"
-mcp scores solitaire
+### GitHub Domain — Direct API access
+```bash
+magmascript gh workflows                     # all workflow statuses
+magmascript gh trigger "Deploy to Pi"        # trigger workflow
+magmascript gh issues                        # list issues
+magmascript gh file path/to/file.txt         # read file
 ```
 
 ## Python Library
 
 ```python
-from magmascript import MCPClient
+from magmascript import MCPClient, PIClient, GHClient
 
-client = MCPClient()
-results = client.search("aphex twin")
-boards = client.scoreboards()
-client.close()
-
-# Or as context manager
+# MCP
 with MCPClient() as mcp:
-    results = mcp.search("radiohead")
-    for r in results:
-        print(f"{r.name} ({r.type})")
+    boards = mcp.scoreboards()
+
+# Pi (direct SSH)
+with PIClient() as pi:
+    status = pi.services()
+
+# GitHub (direct API)
+with GHClient() as gh:
+    workflows = gh.workflows()
 ```
 
 ## Shell Helpers
@@ -75,74 +87,20 @@ with MCPClient() as mcp:
 ```bash
 source lib/magmascript.sh
 
-mcp_search "boards of canada"
-mcp_scoreboards
-mcp_pi_status
+mcp_scoreboards          # MCP commands
+pi_status                # Pi commands
+gh_workflows             # GitHub commands
 ```
 
-## JavaScript (Web/Node)
+## Documentation
 
-```javascript
-import { MCPClient } from './lib/magmascript.js'
-
-const client = new MCPClient(url, apiKey)
-const results = await client.search('aphex twin')
-const boards = await client.scoreboards()
-```
-
-## Architecture
-
-```
-magmascript/
-├── core/           # Framework: registry, config, rpc, output
-├── domains/        # One module per domain (mcp/, future: pi/, gh/)
-├── cli/            # Shell entry points
-├── lib/            # Multi-language wrappers
-└── tests/
-```
-
-### Module Registry
-
-New domains register themselves the same way. The CLI and future DSL discover them through the registry:
-
-```python
-from magmascript.core.registry import register_domain
-
-class PiClient:
-    def status(self): ...
-    def logs(self, service): ...
-
-register_domain("pi", PiClient)
-```
-
-## Available MCP Tools
-
-| Tool | Client Method | Description |
-|---|---|---|
-| `search_cache` | `search(query)` | Search cached MusicBrainz entities |
-| `get_entity` | `get_entity(type, key)` | Get full entity data |
-| `list_cached_entities` | `list_entities(type)` | List all cached entities |
-| `list_scoreboards` | `scoreboards()` | List all leaderboards |
-| `get_scores` | `scores(game, limit)` | Get game leaderboard |
-| `list_archive_pages` | `archive_pages()` | List archive pages |
-| `list_arcade_games` | `arcade_games()` | List arcade games |
-| `check_pi_services` | `pi_status()` | Check Pi services |
-| `get_service_logs` | `pi_logs(service, lines)` | Get service logs |
-| `restart_pi_service` | `pi_restart(service)` | Restart service |
-| `get_pi_system_info` | `pi_info()` | Get Pi system info |
-| `deploy_to_pi` | `deploy(path, service)` | Deploy to Pi |
-| `list_bots` | `bots()` | List GitHub workflows |
-| `get_bot_status` | `bot_status(name)` | Get workflow details |
-| `trigger_bot` | `trigger_bot(name)` | Trigger workflow |
-| `get_bot_runs` | `bot_runs(name, limit)` | Get workflow runs |
-| `search_discogs` | `discogs_search(query, type)` | Search Discogs |
-| `get_discogs_release` | `discogs_release(id)` | Get Discogs release |
-| `get_discogs_artist` | `discogs_artist(id)` | Get Discogs artist |
-| `get_discogs_label` | `discogs_label(id)` | Get Discogs label |
-| `get_jukebox_songs` | `jukebox_songs()` | List jukebox songs |
-| `get_tv_channels` | `tv_channels()` | List TV channels |
-| `get_themes` | `themes()` | List themes |
-| `get_play_counts` | `play_counts()` | List Last.fm play counts |
+Full documentation on the [Wiki](https://github.com/magmacrunchmedia/magmascript/wiki):
+- [Configuration](https://github.com/magmacrunchmedia/magmascript/wiki/Configuration)
+- [MCP Domain](https://github.com/magmacrunchmedia/magmascript/wiki/MCP-Domain)
+- [Pi Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Pi-Domain)
+- [GitHub Domain](https://github.com/magmacrunchmedia/magmascript/wiki/GitHub-Domain)
+- [Architecture](https://github.com/magmacrunchmedia/magmascript/wiki/Architecture)
+- [Shell Helpers](https://github.com/magmacrunchmedia/magmascript/wiki/Shell-Helpers)
 
 ## License
 
