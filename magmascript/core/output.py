@@ -3,8 +3,30 @@
 from __future__ import annotations
 
 import json
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, fields, is_dataclass
 from typing import Any
+
+
+def _flatten_dataclass(obj: Any) -> dict:
+    """Convert a dataclass to a flat dict, formatting nested dataclasses as strings."""
+    if not is_dataclass(obj) or isinstance(obj, type):
+        return {"value": obj}
+    result = {}
+    for f in fields(obj):
+        val = getattr(obj, f.name)
+        if is_dataclass(val) and not isinstance(val, type):
+            # Format nested dataclass as readable string
+            parts = []
+            for nf in fields(val):
+                nv = getattr(val, nf.name)
+                if nv is not None:
+                    parts.append(f"{nf.name}={nv}")
+            result[f.name] = ", ".join(parts) if parts else ""
+        elif isinstance(val, list):
+            result[f.name] = f"{len(val)} items"
+        else:
+            result[f.name] = val
+    return result
 
 
 def format_table(items: list[Any], columns: list[str] | None = None) -> str:
@@ -31,12 +53,12 @@ def format_table(items: list[Any], columns: list[str] | None = None) -> str:
     rows = []
     for item in items:
         if is_dataclass(item) and not isinstance(item, type):
-            d = asdict(item)
+            d = _flatten_dataclass(item)
         elif isinstance(item, dict):
             d = item
         else:
             d = {"value": item}
-        rows.append([str(d.get(col, "")) for col in columns])
+        rows.append([str(d.get(col, "")) if d.get(col) is not None else "" for col in columns])
 
     # Calculate widths
     widths = [len(col) for col in columns]

@@ -76,6 +76,10 @@ class RPCClient:
         resp = self._http.post(self.url, content=json.dumps(msg))
         resp.raise_for_status()
 
+        # Notifications return empty body (200 OK with no content)
+        if is_notification or not resp.content:
+            return RPCResponse(id=msg.get("id"))
+
         content_type = resp.headers.get("content-type", "")
 
         # application/json — single response
