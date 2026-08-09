@@ -9,11 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Dict literals: `{"name": "Jake", "age": 30}`
-- List comprehensions: `[x * 2 for x in items]` with optional filter `[x for x in items if x > 5]`
+- List comprehensions: `[x * 2 for x in items]` with optional filter `[expr for x in list if cond]`
 - String methods: `.split()`, `.join()`, `.upper()`, `.lower()`, `.contains()`, `.replace()`, `.length()`, `.startswith()`, `.endswith()`, `.strip()`
 - Method chaining on strings: `"  Hello World  ".strip().lower()`
 - `keys()` and `values()` now work on dict literals
-- 37 new tests for dict literals, list comprehensions, and string methods (258 total)
+- Domain bridge now properly instantiates client classes with config
+- Registered missing domains: archive, mb, lastfm, search
+- 20 new tests for domain bridge (278 total)
+
+### Fixed
+- Domain bridge now creates client instances instead of storing classes
+- Domains that fail to initialize are gracefully skipped
+- DomainProxy now has `close()` method for cleanup
 
 ## [1.2.0] - 2026-08-09
 
