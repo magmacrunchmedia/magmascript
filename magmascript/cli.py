@@ -44,6 +44,7 @@ Domains:
     scores      Game high scores (direct SSH)
     rights      Music rights metadata (ISRC, ISWC, ASCAP)
     archive     Archive page operations
+    mb          MusicBrainz API client
     cache       Cache management (stats, clear)
 
 MCP Actions:
@@ -127,6 +128,12 @@ Archive:
     check-format                Validate archive HTML formatting
     bake-cache [--dry-run]      Inlines MusicBrainz cache into HTML pages
     generate-stubs              Generate stub HTML for new archive entities
+
+MusicBrainz:
+    backup                      Run full MusicBrainz backup
+    backup --dry-run            Preview backup without writing files
+    backup --skip-existing      Skip already-cached entities
+    backup --stale-only         Only refresh stale caches
 
 Cache:
     stats                       Show cache statistics
@@ -223,11 +230,19 @@ def main():
             finally:
                 pass  # ArchiveClient doesn't have a close method
 
+        elif domain == "mb":
+            from magmascript.domains.mb import MusicBrainzClient
+            client = MusicBrainzClient()
+            try:
+                _dispatch_mb(action, rest, client, fmt)
+            finally:
+                client.close()
+
         elif domain == "cache":
             _dispatch_cache(action, rest, fmt)
 
         else:
-            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, archive, cache", file=sys.stderr)
+            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, archive, mb, cache", file=sys.stderr)
             sys.exit(1)
 
     except KeyboardInterrupt:
@@ -943,6 +958,48 @@ Usage:
     else:
         print(f"Unknown archive action: {action!r}", file=sys.stderr)
         print("Run 'magmascript archive --help' for available actions.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _dispatch_mb(action: str, args: list[str], client, fmt: str):
+    """Dispatch MusicBrainz subcommands."""
+    if not action or action == "--help":
+        print("""MusicBrainz API client.
+
+Usage:
+    magmascript mb backup                  Run full MusicBrainz backup
+    magmascript mb backup --dry-run        Preview backup without writing files
+    magmascript mb backup --skip-existing  Skip already-cached entities
+    magmascript mb backup --stale-only     Only refresh stale caches
+""")
+        sys.exit(0)
+
+    if action == "backup":
+        dry_run = "--dry-run" in args
+        skip_existing = "--skip-existing" in args
+        stale_only = "--stale-only" in args
+
+        result = client.backup(
+            dry_run=dry_run,
+            skip_existing=skip_existing,
+            stale_only=stale_only,
+        )
+
+        if fmt == "json":
+            print(json.dumps({
+                "completed": result.completed,
+                "skipped": result.skipped,
+                "elapsed_seconds": result.elapsed_seconds,
+                "errors": result.errors,
+            }, indent=2))
+        elif result.errors:
+            print(f"\nErrors ({len(result.errors)}):")
+            for err in result.errors:
+                print(f"  {err}")
+
+    else:
+        print(f"Unknown mb action: {action!r}", file=sys.stderr)
+        print("Run 'magmascript mb --help' for available actions.", file=sys.stderr)
         sys.exit(1)
 
 
