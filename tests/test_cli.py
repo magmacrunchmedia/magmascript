@@ -23,7 +23,7 @@ class TestCLI:
         captured = capsys.readouterr()
         assert "Unknown domain" in captured.err
 
-    @patch("magmascript.cli.MCPClient")
+    @patch("magmascript.domains.mcp.MCPClient")
     def test_search_action(self, mock_client_cls, capsys):
         mock_client = MagicMock()
         mock_client.search.return_value = []
@@ -36,7 +36,7 @@ class TestCLI:
         captured = capsys.readouterr()
         assert "(no results)" in captured.out
 
-    @patch("magmascript.cli.MCPClient")
+    @patch("magmascript.domains.mcp.MCPClient")
     def test_scoreboards_action(self, mock_client_cls, capsys):
         mock_client = MagicMock()
         mock_client.scoreboards.return_value = []
@@ -49,7 +49,7 @@ class TestCLI:
         captured = capsys.readouterr()
         assert "(no results)" in captured.out
 
-    @patch("magmascript.cli.MCPClient")
+    @patch("magmascript.domains.mcp.MCPClient")
     def test_json_format(self, mock_client_cls, capsys):
         mock_client = MagicMock()
         mock_client.search.return_value = []

@@ -3,12 +3,8 @@
 Usage:
     magmascript mcp search "aphex twin"
     magmascript mcp scores tetris
-    magmascript mcp scoreboards
-    magmascript mcp entity artists 44c1e0bd-...
-    magmascript mcp games
-    magmascript mcp pi-status
-    magmascript mcp pi-logs arcade-chat
-    magmascript mcp bots
+    magmascript pi status
+    magmascript pi logs arcade-chat
 """
 
 from __future__ import annotations
@@ -17,7 +13,6 @@ import sys
 
 from magmascript.core.config import get_config
 from magmascript.core.output import format_output
-from magmascript.domains.mcp import MCPClient
 
 
 def usage():
@@ -28,6 +23,7 @@ Usage:
 
 Domains:
     mcp         MagmaCrunch MCP server tools
+    pi          Raspberry Pi management (direct SSH)
 
 MCP Actions:
     search <query>              Search cached MusicBrainz entities
@@ -37,11 +33,6 @@ MCP Actions:
     scores <game> [limit]       Get leaderboard for a game
     games                       List all arcade games
     archive                     List all archive pages
-    pi-status                   Check Pi service status
-    pi-logs <service> [lines]   Get service logs
-    pi-restart <service>        Restart a Pi service
-    pi-info                     Get Pi system info
-    deploy <path> [service]     Deploy to Pi via rsync
     bots                        List GitHub Actions workflows
     bot-status <name>           Get workflow details
     trigger <name>              Trigger a workflow
@@ -52,6 +43,19 @@ MCP Actions:
     themes                      List theme catalog
     plays                       List Last.fm play counts
     artist-plays <name>         Get artist play counts
+
+Pi Actions:
+    status                      Check all arcade service statuses
+    logs <service> [lines]      Get service logs
+    logs-errors [lines]         Get error logs from all services
+    logs-today                  Get today's logs
+    restart <service>           Restart a service
+    restart-all                 Restart all arcade services
+    info                        System info (uptime, memory, temp)
+    traffic [lines]             Nginx access log analysis
+    deploy <path> [service]     Deploy to Pi via rsync
+    reboot                      Reboot the Pi
+    shutdown                    Power off the Pi
 
 Options:
     --json                      Output as JSON
@@ -68,10 +72,6 @@ def main():
         usage()
 
     domain = args[0]
-    if domain != "mcp":
-        print(f"Unknown domain: {domain!r}. Available: mcp", file=sys.stderr)
-        sys.exit(1)
-
     action = args[1] if len(args) > 1 else ""
     rest = args[2:]
 
@@ -84,21 +84,29 @@ def main():
         rest.remove("--table")
 
     config = get_config()
-    client = MCPClient(config)
 
-    try:
-        _dispatch_mcp(action, rest, client, fmt)
-    except KeyboardInterrupt:
-        print("\nInterrupted.", file=sys.stderr)
-        sys.exit(130)
-    except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+    if domain == "mcp":
+        from magmascript.domains.mcp import MCPClient
+        client = MCPClient(config)
+        try:
+            _dispatch_mcp(action, rest, client, fmt)
+        finally:
+            client.close()
+
+    elif domain == "pi":
+        from magmascript.domains.pi import PIClient
+        client = PIClient(config)
+        try:
+            _dispatch_pi(action, rest, client, fmt)
+        finally:
+            client.close()
+
+    else:
+        print(f"Unknown domain: {domain!r}. Available: mcp, pi", file=sys.stderr)
         sys.exit(1)
-    finally:
-        client.close()
 
 
-def _dispatch_mcp(action: str, args: list[str], client: MCPClient, fmt: str):
+def _dispatch_mcp(action: str, args: list[str], client, fmt: str):
     """Dispatch MCP subcommands."""
     if not action or action == "--help":
         usage()
@@ -141,37 +149,6 @@ def _dispatch_mcp(action: str, args: list[str], client: MCPClient, fmt: str):
     elif action == "archive":
         results = client.archive_pages()
         print(format_output(results, fmt))
-
-    elif action == "pi-status":
-        results = client.pi_status()
-        print(format_output(results, fmt))
-
-    elif action == "pi-logs":
-        if not args:
-            print("Usage: mcp pi-logs <service> [lines]", file=sys.stderr)
-            sys.exit(1)
-        lines = int(args[1]) if len(args) > 1 else 30
-        result = client.pi_logs(args[0], lines)
-        print(result)
-
-    elif action == "pi-restart":
-        if not args:
-            print("Usage: mcp pi-restart <service>", file=sys.stderr)
-            sys.exit(1)
-        result = client.pi_restart(args[0])
-        print(result)
-
-    elif action == "pi-info":
-        result = client.pi_info()
-        print(format_output(result, fmt))
-
-    elif action == "deploy":
-        if not args:
-            print("Usage: mcp deploy <path> [service]", file=sys.stderr)
-            sys.exit(1)
-        service = args[1] if len(args) > 1 else ""
-        result = client.deploy(args[0], service)
-        print(result)
 
     elif action == "bots":
         results = client.bots()
@@ -233,6 +210,77 @@ def _dispatch_mcp(action: str, args: list[str], client: MCPClient, fmt: str):
     else:
         print(f"Unknown MCP action: {action!r}", file=sys.stderr)
         print("Run 'magmascript mcp --help' for available actions.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _dispatch_pi(action: str, args: list[str], client, fmt: str):
+    """Dispatch Pi subcommands."""
+    if not action or action == "--help":
+        usage()
+
+    if action == "status":
+        results = client.services()
+        print(format_output(results, fmt))
+
+    elif action == "logs":
+        if not args:
+            print("Usage: pi logs <service> [lines]", file=sys.stderr)
+            sys.exit(1)
+        lines = int(args[1]) if len(args) > 1 else 50
+        result = client.logs(args[0], lines)
+        print(result)
+
+    elif action == "logs-errors":
+        lines = int(args[0]) if args else 100
+        result = client.logs_errors(lines)
+        print(result)
+
+    elif action == "logs-today":
+        result = client.logs_today()
+        print(result)
+
+    elif action == "restart":
+        if not args:
+            print("Usage: pi restart <service>", file=sys.stderr)
+            sys.exit(1)
+        result = client.restart(args[0])
+        print(result)
+
+    elif action == "restart-all":
+        result = client.restart_all()
+        print(result)
+
+    elif action == "info":
+        result = client.info()
+        print(format_output(result, fmt))
+
+    elif action == "traffic":
+        lines = int(args[0]) if args else 1000
+        result = client.traffic(lines)
+        print(f"=== Top IPs ===\n{result.top_ips}")
+        print(f"\n=== Status Codes ===\n{result.status_codes}")
+        print(f"\n=== User Agents ===\n{result.user_agents}")
+        print(f"\n=== Total Requests ===\n{result.total_requests}")
+
+    elif action == "deploy":
+        if not args:
+            print("Usage: pi deploy <path> [service]", file=sys.stderr)
+            sys.exit(1)
+        service = args[1] if len(args) > 1 else ""
+        result = client.deploy(args[0], service)
+        print(result)
+
+    elif action == "reboot":
+        result = client.reboot()
+        print(result)
+
+    elif action == "shutdown":
+        result = client.shutdown()
+        print(result)
+
+    else:
+        print(f"Unknown Pi action: {action!r}", file=sys.stderr)
+        print("Run 'magmascript pi --help' for available actions.", file=sys.stderr)
         sys.exit(1)
 
 

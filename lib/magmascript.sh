@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# magmascript shell helpers — source this file for quick MCP access
+# magmascript shell helpers — source this file for quick MCP + Pi access
 #
 # Usage:
 #   source lib/magmascript.sh
 #   mcp_search "aphex twin"
-#   mcp_scores tetris
-#   mcp_scoreboards
+#   pi_status
+#   pi_logs arcade-chat
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
@@ -16,6 +16,8 @@ if command -v magmascript &>/dev/null; then
 else
     _MAGMASCRIPT="python3 -m magmascript.cli"
 fi
+
+# ── MCP helpers ──────────────────────────────────────────────────────────────
 
 mcp_search() {
     $_MAGMASCRIPT mcp search "$@"
@@ -43,22 +45,6 @@ mcp_games() {
 
 mcp_archive() {
     $_MAGMASCRIPT mcp archive
-}
-
-mcp_pi_status() {
-    $_MAGMASCRIPT mcp pi-status
-}
-
-mcp_pi_logs() {
-    $_MAGMASCRIPT mcp pi-logs "$@"
-}
-
-mcp_pi_restart() {
-    $_MAGMASCRIPT mcp pi-restart "$@"
-}
-
-mcp_pi_info() {
-    $_MAGMASCRIPT mcp pi-info
 }
 
 mcp_bots() {
@@ -97,4 +83,52 @@ mcp_artist_plays() {
     $_MAGMASCRIPT mcp artist-plays "$@"
 }
 
-echo "magmascript shell helpers loaded. Type mcp_ and press TAB for available commands."
+# ── Pi helpers ───────────────────────────────────────────────────────────────
+
+pi_status() {
+    $_MAGMASCRIPT pi status
+}
+
+pi_logs() {
+    $_MAGMASCRIPT pi logs "$@"
+}
+
+pi_logs_errors() {
+    $_MAGMASCRIPT pi logs-errors "$@"
+}
+
+pi_logs_today() {
+    $_MAGMASCRIPT pi logs-today
+}
+
+pi_restart() {
+    $_MAGMASCRIPT pi restart "$@"
+}
+
+pi_restart_all() {
+    $_MAGMASCRIPT pi restart-all
+}
+
+pi_info() {
+    $_MAGMASCRIPT pi info
+}
+
+pi_traffic() {
+    $_MAGMASCRIPT pi traffic "$@"
+}
+
+pi_deploy() {
+    $_MAGMASCRIPT pi deploy "$@"
+}
+
+pi_reboot() {
+    $_MAGMASCRIPT pi reboot
+}
+
+pi_shutdown() {
+    $_MAGMASCRIPT pi shutdown
+}
+
+echo "magmascript shell helpers loaded."
+echo "MCP: mcp_search, mcp_scoreboards, mcp_scores, mcp_bots, ..."
+echo "Pi:  pi_status, pi_logs, pi_restart, pi_info, pi_traffic, ..."

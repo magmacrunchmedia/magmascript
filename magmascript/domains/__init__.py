@@ -2,5 +2,6 @@
 
 # Importing this package triggers domain registration
 from magmascript.domains import mcp  # noqa: F401
+from magmascript.domains import pi  # noqa: F401
 
-__all__ = ["mcp"]
+__all__ = ["mcp", "pi"]

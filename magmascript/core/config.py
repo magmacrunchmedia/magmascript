@@ -24,10 +24,19 @@ class MCPConfig:
 
 
 @dataclass
+class PIConfig:
+    """Raspberry Pi SSH configuration."""
+
+    host: str = "192.168.1.16"
+    user: str = "jake"
+
+
+@dataclass
 class Config:
     """Top-level magmascript configuration."""
 
     mcp: MCPConfig = field(default_factory=MCPConfig)
+    pi: PIConfig = field(default_factory=PIConfig)
 
 
 def _load_toml(path: Path) -> dict:
@@ -55,6 +64,7 @@ def load_config(*, config_path: Path | None = None, env_prefix: str = "MAGMA_") 
     cfg_file = config_path or CONFIG_FILE
     toml = _load_toml(cfg_file)
     mcp_section = toml.get("mcp", {})
+    pi_section = toml.get("pi", {})
 
     return Config(
         mcp=MCPConfig(
@@ -62,6 +72,10 @@ def load_config(*, config_path: Path | None = None, env_prefix: str = "MAGMA_") 
             api_key=os.environ.get(f"{env_prefix}API_KEY")
             or os.environ.get("MCP_API_KEY", "")
             or mcp_section.get("api_key", ""),
+        ),
+        pi=PIConfig(
+            host=os.environ.get(f"{env_prefix}PI_HOST", pi_section.get("host", "192.168.1.16")),
+            user=os.environ.get(f"{env_prefix}PI_USER", pi_section.get("user", "jake")),
         ),
     )
 

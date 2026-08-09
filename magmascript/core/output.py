@@ -29,13 +29,19 @@ def _flatten_dataclass(obj: Any) -> dict:
     return result
 
 
-def format_table(items: list[Any], columns: list[str] | None = None) -> str:
-    """Format a list of dataclass instances or dicts as an aligned text table.
+def format_table(items: Any, columns: list[str] | None = None) -> str:
+    """Format dataclass instances or dicts as an aligned text table.
 
     Args:
-        items: List of dataclass instances or dicts
+        items: Single dataclass/dict or list of them
         columns: Column names to display. If None, uses all fields.
     """
+    # Wrap single objects in a list
+    if is_dataclass(items) and not isinstance(items, type):
+        items = [items]
+    elif isinstance(items, dict):
+        items = [items]
+
     if not items:
         return "(no results)"
 
