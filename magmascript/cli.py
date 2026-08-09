@@ -28,6 +28,7 @@ Domains:
     gh          GitHub operations (direct API)
     media       Multi-provider media search
     scores      Game high scores (direct SSH)
+    rights      Music rights metadata (ISRC, ISWC, ASCAP)
     cache       Cache management (stats, clear)
 
 MCP Actions:
@@ -82,6 +83,16 @@ Scores:
     list                        List all games with entry counts
     get <game> [limit]          Get leaderboard for a game (default top 20)
     report                      Generate full markdown report
+
+Rights:
+    search <query>              Search by title, ISRC, ISWC, or ASCAP ID
+    isrc <code>                 Look up recording by ISRC
+    iswc <code>                 Look up work by ISWC
+    ascap <id>                  Look up work by ASCAP ID
+    catalog <artist>            Full rights catalog for an artist
+    recording <uuid>            Rights data for a recording
+    work <uuid>                 Rights data for a work
+    export                      TSV export of all rights data
 
 Cache:
     stats                       Show cache statistics
@@ -162,11 +173,19 @@ def main():
             finally:
                 client.close()
 
+        elif domain == "rights":
+            from magmascript.domains.rights import RightsClient
+            client = RightsClient(config)
+            try:
+                _dispatch_rights(action, rest, client, fmt)
+            finally:
+                client.close()
+
         elif domain == "cache":
             _dispatch_cache(action, rest, fmt)
 
         else:
-            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, cache", file=sys.stderr)
+            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, cache", file=sys.stderr)
             sys.exit(1)
 
     except KeyboardInterrupt:
@@ -583,6 +602,100 @@ def _dispatch_scores(action: str, args: list[str], client, fmt: str):
     else:
         print(f"Unknown scores action: {action!r}", file=sys.stderr)
         print("Run 'magmascript scores --help' for available actions.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _dispatch_rights(action: str, args: list[str], client, fmt: str):
+    """Dispatch music rights subcommands."""
+    if not action or action == "--help":
+        print("""Music rights metadata (ISRC, ISWC, ASCAP).
+
+Usage:
+    magmascript rights search <query>         Search by title, ISRC, ISWC, or ASCAP ID
+    magmascript rights isrc <code>            Look up recording by ISRC
+    magmascript rights iswc <code>            Look up work by ISWC
+    magmascript rights ascap <id>             Look up work by ASCAP ID
+    magmascript rights catalog <artist>       Full rights catalog for an artist
+    magmascript rights recording <uuid>       Rights data for a recording
+    magmascript rights work <uuid>            Rights data for a work
+    magmascript rights export                 TSV export of all rights data
+""")
+        sys.exit(0)
+
+    if action == "search":
+        if not args:
+            print("Usage: rights search <query>", file=sys.stderr)
+            sys.exit(1)
+        results = client.search(args[0])
+        print(format_output(results, fmt))
+
+    elif action == "isrc":
+        if not args:
+            print("Usage: rights isrc <code>", file=sys.stderr)
+            sys.exit(1)
+        result = client.isrc(args[0])
+        if result:
+            print(format_output(result, fmt))
+        else:
+            print(f"No recording found with ISRC: {args[0]}")
+            sys.exit(1)
+
+    elif action == "iswc":
+        if not args:
+            print("Usage: rights iswc <code>", file=sys.stderr)
+            sys.exit(1)
+        result = client.iswc(args[0])
+        if result:
+            print(format_output(result, fmt))
+        else:
+            print(f"No work found with ISWC: {args[0]}")
+            sys.exit(1)
+
+    elif action == "ascap":
+        if not args:
+            print("Usage: rights ascap <id>", file=sys.stderr)
+            sys.exit(1)
+        result = client.ascap(args[0])
+        if result:
+            print(format_output(result, fmt))
+        else:
+            print(f"No work found with ASCAP ID: {args[0]}")
+            sys.exit(1)
+
+    elif action == "catalog":
+        if not args:
+            print("Usage: rights catalog <artist>", file=sys.stderr)
+            sys.exit(1)
+        result = client.catalog(args[0])
+        print(format_output(result, fmt))
+
+    elif action == "recording":
+        if not args:
+            print("Usage: rights recording <uuid>", file=sys.stderr)
+            sys.exit(1)
+        result = client.recording(args[0])
+        print(format_output(result, fmt))
+
+    elif action == "work":
+        if not args:
+            print("Usage: rights work <uuid>", file=sys.stderr)
+            sys.exit(1)
+        result = client.work(args[0])
+        print(format_output(result, fmt))
+
+    elif action == "export":
+        results = client.export()
+        if fmt == "json":
+            print(format_output(results, fmt))
+        else:
+            # TSV format
+            print("Title\tType\tArtist/Composer\tISRC\tISWC\tASCAP ID")
+            for row in results:
+                print(f"{row.title}\t{row.type}\t{row.artist_composer}\t{row.isrc}\t{row.iswc}\t{row.ascap_id}")
+
+    else:
+        print(f"Unknown rights action: {action!r}", file=sys.stderr)
+        print("Run 'magmascript rights --help' for available actions.", file=sys.stderr)
         sys.exit(1)
 
 

@@ -64,10 +64,20 @@ magmascript gh issues                        # list issues
 magmascript gh file path/to/file.txt         # read file
 ```
 
+### Rights Domain — Music rights metadata (ISRC, ISWC, ASCAP)
+```bash
+magmascript rights search "Farewell"         # search by title, ISRC, ISWC, or ASCAP ID
+magmascript rights isrc US-S1Z-24-00012      # look up recording by ISRC
+magmascript rights iswc T-337.058.315-2      # look up work by ISWC
+magmascript rights ascap 933623780           # look up work by ASCAP ID
+magmascript rights catalog "C.P. Rutledge"   # full rights catalog for an artist
+magmascript rights export                    # TSV export for ASCAP forms
+```
+
 ## Python Library
 
 ```python
-from magmascript import MCPClient, PIClient, GHClient
+from magmascript import MCPClient, PIClient, GHClient, RightsClient
 
 # MCP
 with MCPClient() as mcp:
@@ -80,6 +90,11 @@ with PIClient() as pi:
 # GitHub (direct API)
 with GHClient() as gh:
     workflows = gh.workflows()
+
+# Music rights metadata
+with RightsClient() as rights:
+    matches = rights.search("Farewell")
+    catalog = rights.catalog("C.P. Rutledge")
 ```
 
 ## Shell Helpers
@@ -99,6 +114,7 @@ Full documentation on the [Wiki](https://github.com/magmacrunchmedia/magmascript
 - [MCP Domain](https://github.com/magmacrunchmedia/magmascript/wiki/MCP-Domain)
 - [Pi Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Pi-Domain)
 - [GitHub Domain](https://github.com/magmacrunchmedia/magmascript/wiki/GitHub-Domain)
+- [Rights Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Rights-Domain)
 - [Architecture](https://github.com/magmacrunchmedia/magmascript/wiki/Architecture)
 - [Shell Helpers](https://github.com/magmacrunchmedia/magmascript/wiki/Shell-Helpers)
 
