@@ -86,6 +86,7 @@ Scores:
 
 Rights:
     search <query>              Search by title, ISRC, ISWC, or ASCAP ID
+    search <query> --artist a   Search filtered by artist
     isrc <code>                 Look up recording by ISRC
     iswc <code>                 Look up work by ISWC
     ascap <id>                  Look up work by ASCAP ID
@@ -619,14 +620,26 @@ Usage:
     magmascript rights recording <uuid>       Rights data for a recording
     magmascript rights work <uuid>            Rights data for a work
     magmascript rights export                 TSV export of all rights data
+
+Options:
+    --artist <name>              Filter search by artist name
 """)
         sys.exit(0)
 
     if action == "search":
         if not args:
-            print("Usage: rights search <query>", file=sys.stderr)
+            print("Usage: rights search <query> [--artist <name>]", file=sys.stderr)
             sys.exit(1)
-        results = client.search(args[0])
+        query = args[0]
+        artist = ""
+        if "--artist" in args:
+            idx = args.index("--artist")
+            if idx + 1 < len(args):
+                artist = args[idx + 1]
+            else:
+                print("Usage: rights search <query> --artist <name>", file=sys.stderr)
+                sys.exit(1)
+        results = client.search(query, artist=artist)
         print(format_output(results, fmt))
 
     elif action == "isrc":
