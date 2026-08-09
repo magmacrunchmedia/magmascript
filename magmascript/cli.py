@@ -731,7 +731,7 @@ Options:
 
 def _dispatch_jukebox(args: list[str], client, fmt: str):
     """Dispatch jukebox subcommands."""
-    if not args or args[0] == "--help":
+    if args and args[0] == "--help":
         print("""Jukebox management.
 
 Usage:
@@ -740,6 +740,11 @@ Usage:
     magmascript mcp jukebox save <file.json> --deploy  Save + commit to GitHub
 """)
         sys.exit(0)
+
+    if not args or args[0] == "list":
+        result = client.jukebox_songs()
+        print(result)
+        return
 
     sub = args[0]
     rest = args[1:]
@@ -775,15 +780,11 @@ Usage:
                 print(result)
             finally:
                 gh.close()
-    else:
-        # Default: list songs
-        result = client.jukebox_songs()
-        print(result)
 
 
 def _dispatch_tv(args: list[str], client, fmt: str):
     """Dispatch TV channel subcommands."""
-    if not args or args[0] == "--help":
+    if args and args[0] == "--help":
         print("""TV channel management.
 
 Usage:
@@ -792,6 +793,11 @@ Usage:
     magmascript mcp tv save <file.json> --deploy  Save + commit (JSON + channels.js)
 """)
         sys.exit(0)
+
+    if not args or args[0] == "list":
+        result = client.tv_channels()
+        print(result)
+        return
 
     sub = args[0]
     rest = args[1:]
@@ -831,15 +837,11 @@ Usage:
                 print(result)
             finally:
                 gh.close()
-    else:
-        # Default: list channels
-        result = client.tv_channels()
-        print(result)
 
 
 def _dispatch_themes(args: list[str], client, fmt: str):
     """Dispatch theme subcommands."""
-    if not args or args[0] == "--help":
+    if args and args[0] == "--help":
         print("""Theme management.
 
 Usage:
@@ -848,6 +850,11 @@ Usage:
     magmascript mcp themes save <file.json> --deploy  Save + commit to GitHub
 """)
         sys.exit(0)
+
+    if not args or args[0] == "list":
+        result = client.themes()
+        print(result)
+        return
 
     sub = args[0]
     rest = args[1:]
@@ -883,10 +890,6 @@ Usage:
                 print(result)
             finally:
                 gh.close()
-    else:
-        # Default: list themes
-        result = client.themes()
-        print(result)
 
 
 def _dispatch_cache(action: str, args: list[str], fmt: str):
