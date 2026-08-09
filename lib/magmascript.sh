@@ -197,3 +197,9 @@ echo "Pi:  pi_status, pi_logs, pi_restart, pi_info, pi_traffic, ..."
 echo "GH:  gh_workflows, gh_trigger, gh_issues, gh_file, ..."
 echo "Media: media_search, media_providers, ..."
 echo "Scores: scores_list, scores_get, scores_report"
+
+# ── Test domain for scaffolding helpers ────────────────────────────────────────────────────
+
+test-domain_search() {
+    $_MAGMASCRIPT test-domain search "$@"
+}
