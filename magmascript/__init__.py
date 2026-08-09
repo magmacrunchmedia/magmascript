@@ -5,6 +5,7 @@ __version__ = "1.1.0"
 from magmascript.core.config import Config, GHConfig, MediaConfig, PIConfig, get_config, load_config, set_config
 from magmascript.core.registry import get_domain, list_domains, register_domain
 from magmascript.core.rpc import RPCClient, RPCError, RPCResponse
+from magmascript.core.runner import CommandRunner
 from magmascript.core.output import format_output, format_table, format_json
 
 # Import domains to trigger registration
@@ -19,6 +20,7 @@ from magmascript.domains.rights import RightsClient
 
 __all__ = [
     "__version__",
+    "CommandRunner",
     "Config",
     "GHClient",
     "GHConfig",

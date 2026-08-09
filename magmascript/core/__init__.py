@@ -14,12 +14,14 @@ from magmascript.core.exceptions import (
 )
 from magmascript.core.registry import get_domain, list_domains, register_domain
 from magmascript.core.rpc import RPCClient, RPCError, RPCResponse
+from magmascript.core.runner import CommandRunner
 
 __all__ = [
     "APIError",
     "AuthError",
     "CacheStats",
     "CacheStore",
+    "CommandRunner",
     "Config",
     "ConfigError",
     "MagmascriptError",
