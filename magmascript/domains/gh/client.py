@@ -1,11 +1,15 @@
 """GitHub domain — direct API client for GitHub operations.
 
 Uses core/github.py as the shared HTTP layer.
+Raises APIError on HTTP failures.
 """
 
 from __future__ import annotations
 
+import httpx
+
 from magmascript.core.config import Config, get_config
+from magmascript.core.exceptions import APIError, AuthError, RateLimitError
 from magmascript.core.github import WORKFLOWS, GitHubClient
 from magmascript.domains.gh.tools import (
     Issue,
@@ -16,10 +20,32 @@ from magmascript.domains.gh.tools import (
 )
 
 
+def _wrap_api_error(e: Exception, context: str = "") -> APIError:
+    """Wrap httpx exceptions into typed APIError."""
+    if isinstance(e, httpx.HTTPStatusError):
+        status = e.response.status_code
+        msg = f"GitHub API error {status}"
+        if context:
+            msg = f"{context}: {msg}"
+        if status in (401, 403):
+            return AuthError(msg, status_code=status)
+        if status == 429:
+            return RateLimitError(msg, status_code=status)
+        return APIError(msg, status_code=status)
+    if isinstance(e, httpx.ConnectError):
+        return APIError(f"GitHub connection failed: {e}" if not context else f"{context}: connection failed")
+    if isinstance(e, httpx.TimeoutException):
+        return APIError(f"GitHub request timed out" if not context else f"{context}: timed out")
+    if isinstance(e, KeyError):
+        return APIError(f"Unknown workflow: {e}" if not context else f"{context}: {e}")
+    return APIError(f"GitHub API error: {e}" if not context else f"{context}: {e}")
+
+
 class GHClient:
     """GitHub operations client.
 
     Wraps core/github.py with domain-specific methods that return typed results.
+    Raises APIError on HTTP failures.
     """
 
     def __init__(self, config: Config | None = None):
@@ -36,15 +62,21 @@ class GHClient:
 
     def workflows(self) -> list[Workflow]:
         """List all known workflows with their latest run status."""
-        runs = self._client.list_workflow_runs(limit=100)
+        try:
+            runs = self._client.list_workflow_runs(limit=100)
+        except Exception as e:
+            raise _wrap_api_error(e, "list workflows")
         return parse_workflow_runs(runs, WORKFLOWS)
 
     def workflow_runs(self, name: str, limit: int = 10) -> list[WorkflowRun]:
         """Get recent runs for a specific workflow."""
-        workflow_file = self._client.get_workflow_file(name)
-        data = self._client.get(
-            f"{self._client._repo_path}/actions/workflows/{workflow_file}/runs?per_page={limit}"
-        )
+        try:
+            workflow_file = self._client.get_workflow_file(name)
+            data = self._client.get(
+                f"{self._client._repo_path}/actions/workflows/{workflow_file}/runs?per_page={limit}"
+            )
+        except Exception as e:
+            raise _wrap_api_error(e, f"get runs for {name}")
         runs = data.get("workflow_runs", [])
         return [
             WorkflowRun(
@@ -65,7 +97,7 @@ class GHClient:
             self._client.trigger_workflow(name)
             return f"✓ Triggered {name}"
         except Exception as e:
-            return f"✗ Failed to trigger {name}: {e}"
+            raise _wrap_api_error(e, f"trigger {name}")
 
     # ------------------------------------------------------------------
     # Issues
@@ -73,12 +105,18 @@ class GHClient:
 
     def issues(self, *, labels: str = "", state: str = "open", limit: int = 30) -> list[Issue]:
         """List issues with optional filters."""
-        raw = self._client.list_issues(labels=labels, state=state, limit=limit)
+        try:
+            raw = self._client.list_issues(labels=labels, state=state, limit=limit)
+        except Exception as e:
+            raise _wrap_api_error(e, "list issues")
         return parse_issues(raw)
 
     def create_issue(self, title: str, body: str = "", labels: list[str] | None = None) -> Issue:
         """Create a new issue."""
-        raw = self._client.create_issue(title, body, labels)
+        try:
+            raw = self._client.create_issue(title, body, labels)
+        except Exception as e:
+            raise _wrap_api_error(e, "create issue")
         return Issue(
             number=raw["number"],
             title=raw["title"],
@@ -94,7 +132,7 @@ class GHClient:
             self._client.close_issue(number)
             return f"✓ Closed issue #{number}"
         except Exception as e:
-            return f"✗ Failed to close issue #{number}: {e}"
+            raise _wrap_api_error(e, f"close issue #{number}")
 
     # ------------------------------------------------------------------
     # Files
@@ -102,21 +140,23 @@ class GHClient:
 
     def get_file(self, path: str) -> tuple[str, str]:
         """Read a file from the repo. Returns (content, sha)."""
-        return self._client.get_file(path)
+        try:
+            return self._client.get_file(path)
+        except Exception as e:
+            raise _wrap_api_error(e, f"get file {path}")
 
     def put_file(self, path: str, content: str, message: str) -> str:
         """Create or update a file in the repo."""
-        # Get existing SHA if file exists
         sha = None
         try:
             _, sha = self._client.get_file(path)
         except Exception:
-            pass
+            pass  # File doesn't exist yet — that's fine
         try:
             self._client.put_file(path, content, message, sha)
             return f"✓ Updated {path}"
         except Exception as e:
-            return f"✗ Failed to update {path}: {e}"
+            raise _wrap_api_error(e, f"update {path}")
 
     # ------------------------------------------------------------------
     # Repo
@@ -124,7 +164,10 @@ class GHClient:
 
     def repo_info(self) -> dict:
         """Get repository metadata."""
-        return self._client.repo_info()
+        try:
+            return self._client.repo_info()
+        except Exception as e:
+            raise _wrap_api_error(e, "get repo info")
 
     # ------------------------------------------------------------------
     # Lifecycle

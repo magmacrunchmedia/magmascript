@@ -39,6 +39,7 @@ class MediaSearchResponse:
     page: int
     has_more: bool
     provider_totals: dict[str, int] = field(default_factory=dict)
+    errors: dict[str, str] = field(default_factory=dict)  # provider -> error message
 
 
 @dataclass

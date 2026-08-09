@@ -1,4 +1,7 @@
-"""Media domain — multi-provider media search client."""
+"""Media domain — multi-provider media search client.
+
+Surfaces provider errors in MediaSearchResponse.errors.
+"""
 
 from __future__ import annotations
 
@@ -24,7 +27,8 @@ class MediaClient:
     """Multi-provider media search client.
 
     Fans out queries to all enabled providers, normalizes and merges results.
-    One provider failing does not break the others.
+    One provider failing does not break the others — errors are surfaced
+    in MediaSearchResponse.errors.
     """
 
     def __init__(self, config: Config | None = None, *, providers: list[str] | None = None):
@@ -65,30 +69,35 @@ class MediaClient:
         page: int = 1,
         per_page: int = 24,
     ) -> MediaSearchResponse:
-        """Search across all enabled providers (or a specific source)."""
+        """Search across all enabled providers (or a specific source).
+
+        Provider errors are collected in MediaSearchResponse.errors.
+        """
         targets = [source] if source and source in self._providers else list(self._providers.keys())
 
-        def _search_one(key: str) -> tuple[str, MediaSearchResponse | None]:
+        def _search_one(key: str) -> tuple[str, MediaSearchResponse | None, str]:
             try:
                 provider = self._providers[key]
                 result = provider.search(
                     query, page=page, per_page=per_page,
                     media_type=media_type, orientation=orientation,
                 )
-                return key, result
-            except Exception:
-                return key, None
+                return key, result, ""
+            except Exception as e:
+                return key, None, str(e)
 
         merged_results = []
         total = 0
         has_more = False
         provider_totals = {}
+        errors = {}
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
             futures = {executor.submit(_search_one, key): key for key in targets}
             for future in concurrent.futures.as_completed(futures):
-                key, result = future.result()
+                key, result, error = future.result()
                 if result is None:
+                    errors[key] = error or "unknown error"
                     continue
                 merged_results.extend(result.results)
                 total += result.total
@@ -102,6 +111,7 @@ class MediaClient:
             page=page,
             has_more=has_more,
             provider_totals=provider_totals,
+            errors=errors,
         )
 
     def get(self, result_id: str, source: str) -> MediaResult | None:

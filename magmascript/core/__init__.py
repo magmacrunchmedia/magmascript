@@ -1,14 +1,32 @@
 """Core framework for magmascript."""
 
 from magmascript.core.config import Config, get_config, load_config, set_config
+from magmascript.core.exceptions import (
+    APIError,
+    AuthError,
+    ConfigError,
+    MagmascriptError,
+    MCPError,
+    ProviderError,
+    RateLimitError,
+    SSHError,
+)
 from magmascript.core.registry import get_domain, list_domains, register_domain
 from magmascript.core.rpc import RPCClient, RPCError, RPCResponse
 
 __all__ = [
+    "APIError",
+    "AuthError",
     "Config",
+    "ConfigError",
+    "MagmascriptError",
+    "MCPError",
+    "ProviderError",
     "RPCClient",
     "RPCError",
     "RPCResponse",
+    "RateLimitError",
+    "SSHError",
     "get_config",
     "get_domain",
     "list_domains",

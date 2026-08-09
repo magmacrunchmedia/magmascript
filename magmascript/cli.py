@@ -12,6 +12,7 @@ from __future__ import annotations
 import sys
 
 from magmascript.core.config import get_config
+from magmascript.core.exceptions import MagmascriptError
 from magmascript.core.output import format_output
 
 
@@ -103,40 +104,51 @@ def main():
 
     config = get_config()
 
-    if domain == "mcp":
-        from magmascript.domains.mcp import MCPClient
-        client = MCPClient(config)
-        try:
-            _dispatch_mcp(action, rest, client, fmt)
-        finally:
-            client.close()
+    try:
+        if domain == "mcp":
+            from magmascript.domains.mcp import MCPClient
+            client = MCPClient(config)
+            try:
+                _dispatch_mcp(action, rest, client, fmt)
+            finally:
+                client.close()
 
-    elif domain == "pi":
-        from magmascript.domains.pi import PIClient
-        client = PIClient(config)
-        try:
-            _dispatch_pi(action, rest, client, fmt)
-        finally:
-            client.close()
+        elif domain == "pi":
+            from magmascript.domains.pi import PIClient
+            client = PIClient(config)
+            try:
+                _dispatch_pi(action, rest, client, fmt)
+            finally:
+                client.close()
 
-    elif domain == "gh":
-        from magmascript.domains.gh import GHClient
-        client = GHClient(config)
-        try:
-            _dispatch_gh(action, rest, client, fmt)
-        finally:
-            client.close()
+        elif domain == "gh":
+            from magmascript.domains.gh import GHClient
+            client = GHClient(config)
+            try:
+                _dispatch_gh(action, rest, client, fmt)
+            finally:
+                client.close()
 
-    elif domain == "media":
-        from magmascript.domains.media import MediaClient
-        client = MediaClient(config)
-        try:
-            _dispatch_media(action, rest, client, fmt)
-        finally:
-            client.close()
+        elif domain == "media":
+            from magmascript.domains.media import MediaClient
+            client = MediaClient(config)
+            try:
+                _dispatch_media(action, rest, client, fmt)
+            finally:
+                client.close()
 
-    else:
-        print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media", file=sys.stderr)
+        else:
+            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media", file=sys.stderr)
+            sys.exit(1)
+
+    except KeyboardInterrupt:
+        print("\nInterrupted.", file=sys.stderr)
+        sys.exit(130)
+    except MagmascriptError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+    except ValueError as e:
+        print(f"Invalid input: {e}", file=sys.stderr)
         sys.exit(1)
 
 
@@ -439,6 +451,11 @@ def _dispatch_media(action: str, args: list[str], client, fmt: str):
             detail = ", ".join(f"{k}: {v}" for k, v in result.provider_totals.items())
             parts.append(f"({detail})")
         print("  ".join(parts))
+
+        if result.errors:
+            for provider, error in result.errors.items():
+                print(f"  ⚠ {provider}: {error}", file=sys.stderr)
+
         print()
         print(format_output(result.results, fmt))
 
