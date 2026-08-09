@@ -101,6 +101,49 @@ class MgsFunction:
         return "<function:anonymous>"
 
 
+class MgsString:
+    def __init__(self, value: str) -> None:
+        self._value = value
+
+    def split(self, sep: str | None = None) -> list[str]:
+        if sep is None:
+            return self._value.split()
+        return self._value.split(sep)
+
+    def join(self, iterable: list[str]) -> str:
+        return self._value.join(iterable)
+
+    def upper(self) -> str:
+        return self._value.upper()
+
+    def lower(self) -> str:
+        return self._value.lower()
+
+    def contains(self, sub: str) -> bool:
+        return sub in self._value
+
+    def replace(self, old: str, new: str) -> str:
+        return self._value.replace(old, new)
+
+    def length(self) -> int:
+        return len(self._value)
+
+    def startswith(self, prefix: str) -> bool:
+        return self._value.startswith(prefix)
+
+    def endswith(self, suffix: str) -> bool:
+        return self._value.endswith(suffix)
+
+    def strip(self) -> str:
+        return self._value.strip()
+
+    def __repr__(self) -> str:
+        return self._value
+
+    def __str__(self) -> str:
+        return self._value
+
+
 _thread_interpreter: Interpreter | None = None
 
 
@@ -320,6 +363,18 @@ class Interpreter:
         if obj is None:
             raise self.error("Cannot call method on None", node)
 
+        if isinstance(obj, str):
+            mgs_str = MgsString(obj)
+            method = getattr(mgs_str, node.method, None)
+            if method and callable(method):
+                try:
+                    result = method(*args)
+                    return result
+                except RuntimeError:
+                    raise
+                except TypeError as e:
+                    raise self.error(str(e), node)
+
         if hasattr(obj, "_obj"):
             method = getattr(obj, node.method, None)
             if method:
@@ -423,6 +478,26 @@ class Interpreter:
 
     def exec_ListLiteral(self, node: ast.ListLiteral, env: Environment) -> Any:
         return [self.execute(elem, env) for elem in node.elements]
+
+    def exec_DictLiteral(self, node: ast.DictLiteral, env: Environment) -> Any:
+        result = {}
+        for key_node, value_node in zip(node.keys, node.values):
+            key = self.execute(key_node, env)
+            value = self.execute(value_node, env)
+            result[key] = value
+        return result
+
+    def exec_ListComprehension(self, node: ast.ListComprehension, env: Environment) -> Any:
+        iterable = self.execute(node.iterable, env)
+        result = []
+        child_env = env.child()
+        for item in iterable:
+            child_env.define(node.variable, item)
+            if node.condition is not None:
+                if not self._is_truthy(self.execute(node.condition, child_env)):
+                    continue
+            result.append(self.execute(node.element, child_env))
+        return result
 
     def exec_InterpolatedString(self, node: ast.InterpolatedString, env: Environment) -> Any:
         parts = []

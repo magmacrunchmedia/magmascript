@@ -1251,3 +1251,213 @@ class TestRuntimeErrorFormatting:
         with pytest.raises(MgsRuntimeError) as exc_info:
             run("for i in 42 { print(i) }")
         assert "Cannot iterate" in exc_info.value.message
+
+
+# =============================================================================
+# DICT LITERAL TESTS
+# =============================================================================
+
+class TestDictLiterals:
+    def test_empty_dict(self):
+        env = Interpreter()
+        env.run(Parser(Lexer("x = {}").tokenize()).parse())
+        assert env.globals.get("x") == {}
+
+    def test_single_entry(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = {"a": 1}').tokenize()).parse())
+        assert env.globals.get("x") == {"a": 1}
+
+    def test_multiple_entries(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = {"a": 1, "b": 2, "c": 3}').tokenize()).parse())
+        assert env.globals.get("x") == {"a": 1, "b": 2, "c": 3}
+
+    def test_string_keys(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = {"name": "Jake", "age": 30}').tokenize()).parse())
+        assert env.globals.get("x") == {"name": "Jake", "age": 30}
+
+    def test_integer_keys(self):
+        env = Interpreter()
+        env.run(Parser(Lexer("x = {1: \"one\", 2: \"two\"}").tokenize()).parse())
+        assert env.globals.get("x") == {1: "one", 2: "two"}
+
+    def test_nested_dicts(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = {"inner": {"a": 1}}').tokenize()).parse())
+        assert env.globals.get("x") == {"inner": {"a": 1}}
+
+    def test_dict_access(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = {"a": 1}\ny = x["a"]').tokenize()).parse())
+        assert env.globals.get("y") == 1
+
+    def test_dict_with_expressions(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = 5\ny = {"val": x * 2}').tokenize()).parse())
+        assert env.globals.get("y") == {"val": 10}
+
+    def test_keys_method(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = {"a": 1, "b": 2}\ny = keys(x)').tokenize()).parse())
+        result = env.globals.get("y")
+        assert "a" in result
+        assert "b" in result
+
+    def test_values_method(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = {"a": 1, "b": 2}\ny = values(x)').tokenize()).parse())
+        result = env.globals.get("y")
+        assert 1 in result
+        assert 2 in result
+
+    def test_dict_in_for_loop(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = {"a": 1, "b": 2}\ny = 0\nfor k in keys(x) { y = y + x[k] }').tokenize()).parse())
+        assert env.globals.get("y") == 3
+
+
+# =============================================================================
+# LIST COMPREHENSION TESTS
+# =============================================================================
+
+class TestListComprehensions:
+    def test_simple_comprehension(self):
+        env = Interpreter()
+        env.run(Parser(Lexer("x = [1, 2, 3]\ny = [x * 2 for x in x]").tokenize()).parse())
+        assert env.globals.get("y") == [2, 4, 6]
+
+    def test_comprehension_with_condition(self):
+        env = Interpreter()
+        env.run(Parser(Lexer("x = [1, 2, 3, 4, 5]\ny = [x for x in x if x % 2 == 0]").tokenize()).parse())
+        assert env.globals.get("y") == [2, 4]
+
+    def test_comprehension_with_range(self):
+        env = Interpreter()
+        env.run(Parser(Lexer("x = [i * i for i in range(5)]").tokenize()).parse())
+        assert env.globals.get("x") == [0, 1, 4, 9, 16]
+
+    def test_comprehension_string_transform(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = ["hello", "world"]\ny = [x.upper() for x in x]').tokenize()).parse())
+        assert env.globals.get("y") == ["HELLO", "WORLD"]
+
+    def test_comprehension_nested_loop(self):
+        # Note: Nested loops in comprehensions need multiple 'for' clauses
+        # For now, we support single 'for' with optional 'if'
+        # This test uses a workaround with flatten
+        env = Interpreter()
+        env.run(Parser(Lexer("x = [[1, 2], [3, 4]]\ny = []\nfor sub in x { for i in sub { y = y + [i] } }").tokenize()).parse())
+        assert env.globals.get("y") == [1, 2, 3, 4]
+
+    def test_comprehension_filter_and_transform(self):
+        env = Interpreter()
+        env.run(Parser(Lexer("x = [1, 2, 3, 4, 5]\ny = [x * x for x in x if x > 3]").tokenize()).parse())
+        assert env.globals.get("y") == [16, 25]
+
+    def test_comprehension_empty_result(self):
+        env = Interpreter()
+        env.run(Parser(Lexer("x = [1, 2, 3]\ny = [x for x in x if x > 10]").tokenize()).parse())
+        assert env.globals.get("y") == []
+
+
+# =============================================================================
+# STRING METHOD TESTS
+# =============================================================================
+
+class TestStringMethods:
+    def test_split_with_separator(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "a,b,c".split(",")').tokenize()).parse())
+        assert env.globals.get("x") == ["a", "b", "c"]
+
+    def test_split_without_separator(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "hello world".split()').tokenize()).parse())
+        assert env.globals.get("x") == ["hello", "world"]
+
+    def test_join(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "-".join(["a", "b", "c"])').tokenize()).parse())
+        assert env.globals.get("x") == "a-b-c"
+
+    def test_upper(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "hello".upper()').tokenize()).parse())
+        assert env.globals.get("x") == "HELLO"
+
+    def test_lower(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "HELLO".lower()').tokenize()).parse())
+        assert env.globals.get("x") == "hello"
+
+    def test_contains_true(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "hello world".contains("world")').tokenize()).parse())
+        assert env.globals.get("x") is True
+
+    def test_contains_false(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "hello world".contains("xyz")').tokenize()).parse())
+        assert env.globals.get("x") is False
+
+    def test_replace(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "hello world".replace("world", "there")').tokenize()).parse())
+        assert env.globals.get("x") == "hello there"
+
+    def test_length(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "hello".length()').tokenize()).parse())
+        assert env.globals.get("x") == 5
+
+    def test_startswith_true(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "hello".startswith("hel")').tokenize()).parse())
+        assert env.globals.get("x") is True
+
+    def test_startswith_false(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "hello".startswith("xyz")').tokenize()).parse())
+        assert env.globals.get("x") is False
+
+    def test_endswith_true(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "hello".endswith("llo")').tokenize()).parse())
+        assert env.globals.get("x") is True
+
+    def test_endswith_false(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "hello".endswith("xyz")').tokenize()).parse())
+        assert env.globals.get("x") is False
+
+    def test_strip(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "  hello  ".strip()').tokenize()).parse())
+        assert env.globals.get("x") == "hello"
+
+    def test_string_method_chain(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "  Hello World  ".strip().lower()').tokenize()).parse())
+        assert env.globals.get("x") == "hello world"
+
+    def test_split_then_join(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "-".join("a,b,c".split(","))').tokenize()).parse())
+        assert env.globals.get("x") == "a-b-c"
+
+    def test_comprehension_with_string_methods(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = ["hello", "world"]\ny = [w.upper() for w in x]').tokenize()).parse())
+        assert env.globals.get("y") == ["HELLO", "WORLD"]
+
+    def test_dict_with_string_methods(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = {"name": "  Jake  "}\ny = x["name"].strip()').tokenize()).parse())
+        assert env.globals.get("y") == "Jake"
+
+    def test_csv_parsing_example(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('csv = "apple,banana,cherry"\nfruits = csv.split(",")\nupper = [f.upper() for f in fruits]\nresult = " | ".join(upper)').tokenize()).parse())
+        assert env.globals.get("result") == "APPLE | BANANA | CHERRY"

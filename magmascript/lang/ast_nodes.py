@@ -146,6 +146,20 @@ class ListLiteral(ASTNode):
 
 
 @dataclass
+class DictLiteral(ASTNode):
+    keys: list[ASTNode] = field(default_factory=list)
+    values: list[ASTNode] = field(default_factory=list)
+
+
+@dataclass
+class ListComprehension(ASTNode):
+    element: ASTNode = field(default_factory=ASTNode)
+    variable: str = ""
+    iterable: ASTNode = field(default_factory=ASTNode)
+    condition: ASTNode | None = None
+
+
+@dataclass
 class InterpolatedString(ASTNode):
     parts: list[ASTNode] = field(default_factory=list)
 
