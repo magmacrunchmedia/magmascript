@@ -12,8 +12,13 @@ def builtin_echo(*args: Any) -> None:
 
 
 def builtin_len(value: Any) -> int:
-    if isinstance(value, (str, list, dict)):
+    from magmascript.lang.domain_bridge import ListWrapper, DataclassWrapper
+    if isinstance(value, (str, list, dict, ListWrapper)):
         return len(value)
+    if isinstance(value, DataclassWrapper):
+        obj = object.__getattribute__(value, "_obj")
+        if hasattr(obj, "__len__"):
+            return len(obj)
     raise TypeError(f"len() expected string, list, or dict, got {type(value).__name__}")
 
 
