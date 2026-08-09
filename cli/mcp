@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# magmascript MCP wrapper — shorthand for common operations
+#
+# Usage:
+#   mcp search "aphex twin"
+#   mcp scores tetris
+#   mcp scoreboards
+#   mcp entity artists 44c1e0bd-...
+#   mcp games
+#   mcp pi-status
+#   mcp pi-logs arcade-chat
+#   mcp bots
+#
+# Install:
+#   chmod +x cli/mcp
+#   ln -s $(pwd)/cli/mcp /usr/local/bin/mcp
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+# If magmascript is installed as a package, use it
+if command -v magmascript &>/dev/null; then
+    exec magmascript mcp "$@"
+fi
+
+# Otherwise, run from source
+exec python3 -m magmascript.cli mcp "$@"

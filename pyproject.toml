@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "magmascript"
+version = "1.0.0"
+description = "Scripting toolkit with domain-first subcommands"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.11"
+authors = [
+    {name = "Jake McCoy"},
+]
+keywords = ["mcp", "scripting", "cli", "magmacrunch"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = [
+    "httpx>=0.27",
+]
+
+[project.optional-dependencies]
+cli = [
+    "rich>=13.0",
+]
+config = [
+    "tomli>=2.0; python_version < '3.11'",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+all = [
+    "magmascript[cli,config,dev]",
+]
+
+[project.scripts]
+magmascript = "magmascript.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/magmacrunchmedia/magmascript"
+Repository = "https://github.com/magmacrunchmedia/magmascript"
+
+[tool.setuptools.packages.find]
+include = ["magmascript*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
