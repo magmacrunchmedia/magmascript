@@ -4,15 +4,37 @@ from magmascript.lang.tokens import Token, TokenType, KEYWORDS
 
 
 class LexerError(Exception):
-    def __init__(self, message: str, line: int, column: int) -> None:
-        super().__init__(f"Line {line}, Column {column}: {message}")
+    def __init__(self, message: str, line: int, column: int, source_line: str | None = None, filename: str | None = None) -> None:
         self.line = line
         self.column = column
+        self.source_line = source_line
+        self.filename = filename
+        self.message = message
+        super().__init__(message)
+
+    def format(self) -> str:
+        parts = []
+        loc = f"line {self.line}, column {self.column}"
+        if self.filename:
+            loc = f"{self.filename}:{loc}"
+        parts.append(f"Syntax error at {loc}")
+
+        if self.source_line is not None:
+            line_num = str(self.line)
+            padding = " " * len(line_num)
+            parts.append(f"  {padding} |")
+            parts.append(f"  {line_num} | {self.source_line}")
+            caret = " " * (self.column - 1) + "^" * min(len(self.source_line) - self.column + 1, 20)
+            parts.append(f"  {padding} | {caret}")
+
+        parts.append(self.message)
+        return "\n".join(parts)
 
 
 class Lexer:
-    def __init__(self, source: str) -> None:
+    def __init__(self, source: str, filename: str | None = None) -> None:
         self.source = source
+        self.filename = filename
         self.pos = 0
         self.line = 1
         self.column = 1
@@ -21,7 +43,14 @@ class Lexer:
         self.paren_depth = 0
 
     def error(self, message: str) -> LexerError:
-        return LexerError(message, self.line, self.column)
+        source_line = self._get_source_line(self.line)
+        return LexerError(message, self.line, self.column, source_line, self.filename)
+
+    def _get_source_line(self, line_num: int) -> str | None:
+        lines = self.source.split("\n")
+        if 1 <= line_num <= len(lines):
+            return lines[line_num - 1]
+        return None
 
     def peek(self) -> str | None:
         if self.pos < len(self.source):
@@ -101,7 +130,8 @@ class Lexer:
                 parts.append(self.advance())
 
         if self.pos >= len(self.source):
-            raise self.error("Unterminated string")
+            preview = "".join(parts)[:30]
+            raise self.error(f"Unterminated string starting with {quote}{preview}...")
 
         self.advance()
         value = "".join(parts)
@@ -163,7 +193,7 @@ class Lexer:
                 self.indent_stack.pop()
                 self.tokens.append(Token(TokenType.DEDENT, 0, self.line, self.column))
             if self.indent_stack[-1] != current_indent:
-                raise self.error("Indentation error")
+                raise self.error(f"Indentation error: expected {self.indent_stack[-1]} spaces, got {current_indent}")
 
     def tokenize(self) -> list[Token]:
         while self.pos < len(self.source):
@@ -266,7 +296,7 @@ class Lexer:
                 if self.match("="):
                     self.tokens.append(Token(TokenType.NEQ, "!=", line, col))
                 else:
-                    raise self.error(f"Unexpected character: !")
+                    raise self.error(f"Unexpected character '!' — did you mean '!='?")
             elif ch == "<":
                 self.advance()
                 if self.match("="):
@@ -292,7 +322,7 @@ class Lexer:
                 self.tokens.append(Token(TokenType.SEMICOLON, ";", line, col))
                 self.advance()
             else:
-                raise self.error(f"Unexpected character: {ch}")
+                raise self.error(f"Unexpected character '{ch}'")
 
         while len(self.indent_stack) > 1:
             self.indent_stack.pop()

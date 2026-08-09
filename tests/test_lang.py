@@ -552,7 +552,7 @@ class TestParserPrecedence:
 
 class TestParserErrors:
     def test_unexpected_token(self):
-        with pytest.raises(ParseError, match="Expected RPAREN"):
+        with pytest.raises(ParseError, match="Expected '\\)'"):
             Parser(Lexer("(1 + 2").tokenize()).parse()
 
 
@@ -834,7 +834,7 @@ class TestInterpreterFunctions:
         assert env.globals.get("result") == 10
 
     def test_wrong_arg_count(self):
-        with pytest.raises(MgsRuntimeError, match="Expected 1 arguments, got 2"):
+        with pytest.raises(MgsRuntimeError, match="takes 1 argument but 2 were given"):
             run("fn f(x) { x }\nf(1, 2)")
 
     def test_call_non_function(self):
@@ -910,7 +910,7 @@ class TestInterpreterLists:
         assert env.globals.get("y") == 20
 
     def test_list_index_out_of_bounds(self):
-        with pytest.raises(MgsRuntimeError, match="out of bounds"):
+        with pytest.raises(MgsRuntimeError, match="out of range"):
             run("x = [1, 2, 3]\nx[5]")
 
     def test_list_concatenation(self):
@@ -1002,12 +1002,23 @@ class TestInterpreterBuiltins:
 
 class TestInterpreterErrors:
     def test_syntax_error_line_number(self):
-        with pytest.raises(MgsRuntimeError, match="Line"):
+        with pytest.raises(MgsRuntimeError) as exc_info:
             run("x = 1 / 0")
+        assert exc_info.value.line == 1
 
     def test_runtime_error_line_number(self):
-        with pytest.raises(MgsRuntimeError, match="Line"):
+        with pytest.raises(MgsRuntimeError) as exc_info:
             run("x = 1 / 0")
+        assert exc_info.value.line > 0
+
+    def test_error_has_source_line(self):
+        with pytest.raises(MgsRuntimeError) as exc_info:
+            source = "x = 1 / 0"
+            tokens = Lexer(source).tokenize()
+            program = Parser(tokens, source=source).parse()
+            interp = Interpreter(source=source)
+            interp.run(program)
+        assert exc_info.value.source_line == "x = 1 / 0"
 
 
 # =============================================================================
@@ -1108,3 +1119,135 @@ for n in numbers {
         env = Interpreter()
         env.run(Parser(Lexer(source).tokenize()).parse())
         assert env.globals.get("result") == "MagmaScript v2"
+
+
+# =============================================================================
+# ERROR FORMATTING TESTS
+# =============================================================================
+
+class TestLexerErrorFormatting:
+    def test_unterminated_string_error(self):
+        with pytest.raises(LexerError) as exc_info:
+            Lexer('"hello').tokenize()
+        assert "Unterminated string" in str(exc_info.value.message)
+
+    def test_indentation_error(self):
+        with pytest.raises(LexerError) as exc_info:
+            Lexer("if true:\n    x = 1\n  y = 2\n").tokenize()
+        assert "Indentation error" in str(exc_info.value.message)
+
+    def test_unexpected_bang_error(self):
+        with pytest.raises(LexerError) as exc_info:
+            Lexer("!").tokenize()
+        assert "did you mean '!='?" in str(exc_info.value.message)
+
+    def test_error_has_source_line(self):
+        with pytest.raises(LexerError) as exc_info:
+            Lexer('"hello').tokenize()
+        assert exc_info.value.source_line == '"hello'
+
+    def test_error_has_filename(self):
+        with pytest.raises(LexerError) as exc_info:
+            Lexer('"hello', filename="test.mgs").tokenize()
+        assert exc_info.value.filename == "test.mgs"
+
+    def test_error_format(self):
+        with pytest.raises(LexerError) as exc_info:
+            Lexer('"hello', filename="test.mgs").tokenize()
+        formatted = exc_info.value.format()
+        assert "test.mgs" in formatted
+        assert "line 1" in formatted
+        assert "Unterminated string" in formatted
+
+
+class TestParseErrorFormatting:
+    def test_error_has_source_line(self):
+        with pytest.raises(ParseError) as exc_info:
+            tokens = Lexer("(1 + 2").tokenize()
+            Parser(tokens, source="(1 + 2").parse()
+        assert exc_info.value.source_line == "(1 + 2"
+
+    def test_error_has_filename(self):
+        with pytest.raises(ParseError) as exc_info:
+            tokens = Lexer("(1 + 2").tokenize()
+            Parser(tokens, source="(1 + 2", filename="test.mgs").parse()
+        assert exc_info.value.filename == "test.mgs"
+
+    def test_error_format(self):
+        with pytest.raises(ParseError) as exc_info:
+            tokens = Lexer("(1 + 2").tokenize()
+            Parser(tokens, source="(1 + 2", filename="test.mgs").parse()
+        formatted = exc_info.value.format()
+        assert "test.mgs" in formatted
+        assert "line 1" in formatted
+        assert "')'" in formatted
+
+    def test_error_includes_token_value(self):
+        with pytest.raises(ParseError) as exc_info:
+            tokens = Lexer("fn f() { return }").tokenize()
+            Parser(tokens).parse()
+        assert "'}'" in str(exc_info.value.message)
+
+
+class TestRuntimeErrorFormatting:
+    def test_error_has_line_and_column(self):
+        with pytest.raises(MgsRuntimeError) as exc_info:
+            run("x = 1 / 0")
+        assert exc_info.value.line == 1
+        assert exc_info.value.column == 7
+
+    def test_error_has_source_line(self):
+        with pytest.raises(MgsRuntimeError) as exc_info:
+            run("x = 1 / 0")
+        assert exc_info.value.source_line == "x = 1 / 0"
+
+    def test_error_has_filename(self):
+        with pytest.raises(MgsRuntimeError) as exc_info:
+            source = "x = 1 / 0"
+            tokens = Lexer(source, filename="test.mgs").tokenize()
+            program = Parser(tokens, source=source, filename="test.mgs").parse()
+            interp = Interpreter(source=source, filename="test.mgs")
+            interp.run(program)
+        assert exc_info.value.filename == "test.mgs"
+
+    def test_error_format(self):
+        with pytest.raises(MgsRuntimeError) as exc_info:
+            source = "x = 1 / 0"
+            tokens = Lexer(source, filename="test.mgs").tokenize()
+            program = Parser(tokens, source=source, filename="test.mgs").parse()
+            interp = Interpreter(source=source, filename="test.mgs")
+            interp.run(program)
+        formatted = exc_info.value.format()
+        assert "test.mgs" in formatted
+        assert "line 1" in formatted
+        assert "Division by zero" in formatted
+
+    def test_undefined_variable_suggestion(self):
+        with pytest.raises(MgsRuntimeError) as exc_info:
+            run("greeting = 1\ngreting")
+        assert "did you mean" in exc_info.value.message.lower()
+
+    def test_function_name_in_error(self):
+        with pytest.raises(MgsRuntimeError) as exc_info:
+            run("fn fib(n) { n }\nfib()")
+        assert "fib()" in exc_info.value.message
+
+    def test_call_stack(self):
+        with pytest.raises(MgsRuntimeError) as exc_info:
+            run("fn inner() { 1 / 0 }\nfn outer() { inner() }\nouter()")
+        assert len(exc_info.value.call_stack) > 0
+
+    def test_index_out_of_bounds_with_length(self):
+        with pytest.raises(MgsRuntimeError) as exc_info:
+            run("x = [1, 2, 3]\nx[10]")
+        assert "has 3 element" in exc_info.value.message
+
+    def test_cannot_call_non_function(self):
+        with pytest.raises(MgsRuntimeError) as exc_info:
+            run("x = 42\nx()")
+        assert "Cannot call non-function" in exc_info.value.message
+
+    def test_cannot_iterate(self):
+        with pytest.raises(MgsRuntimeError) as exc_info:
+            run("for i in 42 { print(i) }")
+        assert "Cannot iterate" in exc_info.value.message

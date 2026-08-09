@@ -1,22 +1,52 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from magmascript.lang import ast_nodes as ast
 from magmascript.lang.environment import Environment, EnvironmentError
 from magmascript.lang.builtins import BUILTINS
 from magmascript.lang.domain_bridge import create_domain_proxies, wrap_result
+from magmascript.lang.util import suggest
 
 
 class RuntimeError(Exception):
-    def __init__(self, message: str, line: int = 0, column: int = 0) -> None:
-        if line:
-            super().__init__(f"Line {line}, Column {column}: {message}")
-        else:
-            super().__init__(message)
+    def __init__(self, message: str, line: int = 0, column: int = 0, filename: str | None = None, source_line: str | None = None, call_stack: list[str] | None = None) -> None:
         self.line = line
         self.column = column
+        self.filename = filename
+        self.source_line = source_line
+        self.call_stack = call_stack or []
+        self.message = message
+        super().__init__(message)
+
+    def format(self) -> str:
+        parts = []
+        if self.line:
+            loc = f"line {self.line}, column {self.column}"
+            if self.filename:
+                loc = f"{self.filename}:{loc}"
+            parts.append(f"Runtime error at {loc}")
+
+            if self.source_line is not None:
+                line_num = str(self.line)
+                padding = " " * len(line_num)
+                parts.append(f"  {padding} |")
+                parts.append(f"  {line_num} | {self.source_line}")
+                caret = " " * (self.column - 1) + "^"
+                parts.append(f"  {padding} | {caret}")
+        else:
+            parts.append("Runtime error")
+
+        parts.append(self.message)
+
+        if self.call_stack:
+            parts.append("")
+            parts.append("Stack trace:")
+            for frame in self.call_stack:
+                parts.append(f"  {frame}")
+
+        return "\n".join(parts)
 
 
 class BreakSignal(Exception):
@@ -41,18 +71,29 @@ class MgsFunction:
 
     def __call__(self, *args: Any) -> Any:
         if len(args) != len(self.params):
-            raise RuntimeError(f"Expected {len(self.params)} arguments, got {len(args)}")
+            name = self.name or "anonymous"
+            raise RuntimeError(f"{name}() takes {len(self.params)} argument{'s' if len(self.params) != 1 else ''} but {len(args)} {'were' if len(args) != 1 else 'was'} given")
 
         child_env = self.closure.child()
         for param, arg in zip(self.params, args):
             child_env.define(param, arg)
 
         interp = _get_thread_interpreter()
+        interp._call_stack.append(self._stack_frame())
         try:
             result = interp.execute(self.body, child_env)
             return result
         except ReturnSignal as e:
             return e.value
+        finally:
+            interp._call_stack.pop()
+
+    def _stack_frame(self) -> str:
+        name = self.name or "anonymous"
+        body = self.body
+        if hasattr(body, "line") and body.line:
+            return f"{name}() at line {body.line}"
+        return f"{name}()"
 
     def __repr__(self) -> str:
         if self.name:
@@ -71,8 +112,11 @@ def _get_thread_interpreter() -> Interpreter:
 
 
 class Interpreter:
-    def __init__(self) -> None:
+    def __init__(self, source: str | None = None, filename: str | None = None) -> None:
         self.globals = Environment()
+        self.source = source
+        self.filename = filename
+        self._call_stack: list[str] = []
         self._setup_builtins()
         self._setup_domains()
 
@@ -84,6 +128,20 @@ class Interpreter:
         proxies = create_domain_proxies()
         for name, proxy in proxies.items():
             self.globals.define(name, proxy)
+
+    def _get_source_line(self, line_num: int) -> str | None:
+        if self.source is None:
+            return None
+        lines = self.source.split("\n")
+        if 1 <= line_num <= len(lines):
+            return lines[line_num - 1]
+        return None
+
+    def error(self, message: str, node: ast.ASTNode | None = None) -> RuntimeError:
+        line = getattr(node, "line", 0) or 0
+        column = getattr(node, "column", 0) or 0
+        source_line = self._get_source_line(line) if line else None
+        return RuntimeError(message, line, column, self.filename, source_line, list(self._call_stack))
 
     def run(self, program: ast.Program) -> Any:
         result = None
@@ -126,7 +184,10 @@ class Interpreter:
         try:
             return env.get(node.name)
         except EnvironmentError as e:
-            raise RuntimeError(str(e), node.line, node.column)
+            msg = f"Undefined variable '{node.name}'"
+            if e.suggestion:
+                msg += f" — did you mean '{e.suggestion}'?"
+            raise self.error(msg, node)
 
     def exec_BinaryOp(self, node: ast.BinaryOp, env: Environment) -> Any:
         left = self.execute(node.left, env)
@@ -159,7 +220,7 @@ class Interpreter:
             return left * right
         if node.op == "/":
             if right == 0:
-                raise RuntimeError("Division by zero", node.line, node.column)
+                raise self.error("Division by zero", node)
             return left / right
         if node.op == "%":
             return left % right
@@ -196,12 +257,13 @@ class Interpreter:
     def exec_PropertyAccess(self, node: ast.PropertyAccess, env: Environment) -> Any:
         obj = self.execute(node.object, env)
         if obj is None:
-            raise RuntimeError(f"Cannot access property on None", node.line, node.column)
+            raise self.error("Cannot access property on None", node)
 
         if isinstance(obj, dict):
             if node.property in obj:
                 return obj[node.property]
-            raise RuntimeError(f"Property '{node.property}' not found", node.line, node.column)
+            available = ", ".join(sorted(obj.keys()))
+            raise self.error(f"Property '{node.property}' not found on dict. Available: {available}", node)
 
         if hasattr(obj, "_obj"):
             return getattr(obj, node.property)
@@ -209,7 +271,7 @@ class Interpreter:
         if hasattr(obj, node.property):
             return getattr(obj, node.property)
 
-        raise RuntimeError(f"Cannot access property '{node.property}' on {type(obj).__name__}", node.line, node.column)
+        raise self.error(f"Cannot access property '{node.property}' on {type(obj).__name__}", node)
 
     def exec_IndexAccess(self, node: ast.IndexAccess, env: Environment) -> Any:
         obj = self.execute(node.object, env)
@@ -217,23 +279,24 @@ class Interpreter:
 
         if isinstance(obj, list):
             if not isinstance(index, int):
-                raise RuntimeError("List index must be an integer", node.line, node.column)
+                raise self.error("List index must be an integer", node)
             if index < 0 or index >= len(obj):
-                raise RuntimeError(f"List index out of bounds: {index}", node.line, node.column)
+                raise self.error(f"List index {index} out of range (list has {len(obj)} element{'s' if len(obj) != 1 else ''})", node)
             return obj[index]
 
         if isinstance(obj, dict):
             if index not in obj:
-                raise RuntimeError(f"Key not found: {index}", node.line, node.column)
+                available = ", ".join(repr(k) for k in sorted(obj.keys(), key=str))
+                raise self.error(f"Key {index!r} not found in dict. Available keys: {available}", node)
             return obj[index]
 
         if hasattr(obj, "__getitem__"):
             try:
                 return obj[index]
             except (KeyError, IndexError) as e:
-                raise RuntimeError(str(e), node.line, node.column)
+                raise self.error(str(e), node)
 
-        raise RuntimeError(f"Cannot index into {type(obj).__name__}", node.line, node.column)
+        raise self.error(f"Cannot index into {type(obj).__name__}", node)
 
     def exec_FunctionCall(self, node: ast.FunctionCall, env: Environment) -> Any:
         callee = self.execute(node.callee, env)
@@ -243,17 +306,19 @@ class Interpreter:
             try:
                 result = callee(*args)
                 return wrap_result(result)
+            except RuntimeError:
+                raise
             except TypeError as e:
-                raise RuntimeError(str(e), node.line, node.column)
+                raise self.error(str(e), node)
 
-        raise RuntimeError(f"Cannot call non-function: {type(callee).__name__}", node.line, node.column)
+        raise self.error(f"Cannot call non-function: {type(callee).__name__}", node)
 
     def exec_MethodCall(self, node: ast.MethodCall, env: Environment) -> Any:
         obj = self.execute(node.object, env)
         args = [self.execute(arg, env) for arg in node.arguments]
 
         if obj is None:
-            raise RuntimeError(f"Cannot call method on None", node.line, node.column)
+            raise self.error("Cannot call method on None", node)
 
         if hasattr(obj, "_obj"):
             method = getattr(obj, node.method, None)
@@ -261,8 +326,10 @@ class Interpreter:
                 try:
                     result = method(*args)
                     return wrap_result(result)
+                except RuntimeError:
+                    raise
                 except TypeError as e:
-                    raise RuntimeError(str(e), node.line, node.column)
+                    raise self.error(str(e), node)
 
         if hasattr(obj, node.method):
             method = getattr(obj, node.method)
@@ -270,10 +337,15 @@ class Interpreter:
                 try:
                     result = method(*args)
                     return wrap_result(result)
+                except RuntimeError:
+                    raise
                 except TypeError as e:
-                    raise RuntimeError(str(e), node.line, node.column)
+                    raise self.error(str(e), node)
 
-        raise RuntimeError(f"Object has no method '{node.method}'", node.line, node.column)
+        type_name = type(obj).__name__
+        if hasattr(obj, "_obj"):
+            type_name = type(obj._obj).__name__
+        raise self.error(f"{type_name} has no method '{node.method}'", node)
 
     def exec_IfExpression(self, node: ast.IfExpression, env: Environment) -> Any:
         condition = self.execute(node.condition, env)
@@ -293,7 +365,7 @@ class Interpreter:
         elif hasattr(iterable, "__iter__"):
             items = list(iterable)
         else:
-            raise RuntimeError(f"Cannot iterate over {type(iterable).__name__}", node.line, node.column)
+            raise self.error(f"Cannot iterate over {type(iterable).__name__}", node)
 
         result = None
         child_env = env.child()
@@ -386,7 +458,7 @@ class Interpreter:
 def run(source: str) -> Any:
     from magmascript.lang.parser import parse
     program = parse(source)
-    interpreter = Interpreter()
+    interpreter = Interpreter(source=source)
     global _thread_interpreter
     _thread_interpreter = interpreter
     return interpreter.run(program)

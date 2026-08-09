@@ -7,21 +7,29 @@ from magmascript.lang.lexer import Lexer, LexerError
 from magmascript.lang.parser import Parser, ParseError
 from magmascript.lang.interpreter import Interpreter, RuntimeError as MgsRuntimeError
 from magmascript.lang.ast_nodes import ExprStatement
+from magmascript import __version__
+
+
+# ANSI color codes
+_RED = "\033[31m"
+_DIM = "\033[2m"
+_RESET = "\033[0m"
+_BOLD = "\033[1m"
 
 
 def repl() -> None:
     interpreter = Interpreter()
     buffer: list[str] = []
 
-    print("MagmaScript v0.1.0")
+    print(f"MagmaScript v{__version__}")
     print("Type .exit to quit, .help for help\n")
 
     while True:
         try:
             if buffer:
-                prompt = "... "
+                prompt = f"{_DIM}... {_RESET}"
             else:
-                prompt = "mgs> "
+                prompt = f"{_BOLD}mgs>{_RESET} "
 
             line = input(prompt)
 
@@ -58,7 +66,7 @@ def repl() -> None:
                     program = Parser(tokens).parse()
                     _print_ast(program, indent=0)
                 except (LexerError, ParseError) as e:
-                    print(f"Error: {e}")
+                    _print_error(e)
                 continue
 
             buffer.append(line)
@@ -75,7 +83,7 @@ def repl() -> None:
                     program = Parser(tokens).parse()
                     buffer = []
                 else:
-                    print(f"Error: {e}")
+                    _print_error(e)
                     buffer = []
                     continue
 
@@ -89,7 +97,7 @@ def repl() -> None:
                 interpreter.run(program)
 
         except MgsRuntimeError as e:
-            print(f"Runtime Error: {e}")
+            _print_error(e)
             buffer = []
         except KeyboardInterrupt:
             print("\nUse .exit to quit.")
@@ -97,6 +105,23 @@ def repl() -> None:
         except EOFError:
             print()
             break
+
+
+def _print_error(e: LexerError | ParseError | MgsRuntimeError) -> None:
+    if hasattr(e, "format"):
+        formatted = e.format()
+        lines = formatted.split("\n")
+        for i, line in enumerate(lines):
+            if i == 0:
+                print(f"{_RED}{_BOLD}{line}{_RESET}")
+            elif line.startswith("  ") and "|" in line:
+                print(f"{_DIM}{line}{_RESET}")
+            elif line.startswith("  ") and "^" in line:
+                print(f"{_RED}{line}{_RESET}")
+            else:
+                print(line)
+    else:
+        print(f"{_RED}Error: {e}{_RESET}")
 
 
 def _format_value(value: object) -> str:
