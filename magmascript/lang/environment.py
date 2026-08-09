@@ -24,12 +24,9 @@ class Environment:
         if name in self.variables:
             self.variables[name] = value
             return
-        if self.parent is not None:
-            try:
-                self.parent.set(name, value)
-                return
-            except EnvironmentError:
-                pass
+        if self.parent is not None and self.parent.has(name):
+            self.parent.set(name, value)
+            return
         self.variables[name] = value
 
     def define(self, name: str, value: Any) -> None:

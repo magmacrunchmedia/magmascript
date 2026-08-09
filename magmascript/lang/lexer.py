@@ -143,7 +143,6 @@ class Lexer:
     def handle_newline(self) -> None:
         line, col = self.line, self.column
         self.advance()
-        self.skip_whitespace()
 
         if self.pos >= len(self.source) or self.source[self.pos] == "#" or self.source[self.pos:self.pos + 2] == "//":
             return
@@ -175,8 +174,11 @@ class Lexer:
 
             ch = self.source[self.pos]
 
+            line, col = self.line, self.column
+
             if ch == "\n":
                 if self.paren_depth == 0:
+                    self.tokens.append(Token(TokenType.NEWLINE, "\\n", line, col))
                     self.handle_newline()
                 else:
                     self.advance()
@@ -189,8 +191,6 @@ class Lexer:
 
             if self.skip_comment():
                 continue
-
-            line, col = self.line, self.column
 
             if ch == '"' or ch == "'":
                 self.tokens.append(self.read_string())
