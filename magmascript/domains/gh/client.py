@@ -186,6 +186,21 @@ class GHClient:
         except Exception as e:
             raise _wrap_api_error(e, f"update {path}")
 
+    def commit_multiple(self, files: list[dict[str, str]], message: str) -> str:
+        """Commit multiple files atomically.
+
+        Args:
+            files: List of {"path": str, "content": str} dicts
+            message: Commit message
+        """
+        try:
+            result = self._client.commit_multiple(files, message)
+            paths = ", ".join(f["path"] for f in files)
+            sha = result.get("sha", "")[:7]
+            return f"✓ Committed {len(files)} file(s) ({sha}): {paths}"
+        except Exception as e:
+            raise _wrap_api_error(e, "commit multiple files")
+
     # ------------------------------------------------------------------
     # Repo
     # ------------------------------------------------------------------

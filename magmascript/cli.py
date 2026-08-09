@@ -9,11 +9,25 @@ Usage:
 
 from __future__ import annotations
 
+import json
 import sys
 
 from magmascript.core.config import get_config
 from magmascript.core.exceptions import MagmascriptError
 from magmascript.core.output import format_output
+
+
+def _generate_channels_js(channels: list[dict]) -> str:
+    """Generate visual/tv/channels.js from TV channel data."""
+    lines = []
+    for ch in channels:
+        lines.append(
+            '    { title: ' + json.dumps(ch.get("title", "")) +
+            ', artist: ' + json.dumps(ch.get("artist", "")) +
+            ', id: ' + json.dumps(ch.get("id", "")) +
+            ', year: ' + json.dumps(ch.get("year", "")) + ' }'
+        )
+    return 'window.TV_CHANNELS = [\n' + ',\n'.join(lines) + '\n];\n'
 
 
 def usage():
@@ -45,8 +59,14 @@ MCP Actions:
     bot-runs <name> [limit]     Get workflow run history
     discogs <query> [type]      Search Discogs
     jukebox                     List jukebox songs
+    jukebox save <file>         Save songs from JSON file
+    jukebox save <file> --deploy  Save + commit to GitHub
     tv                          List TV channels
+    tv save <file>              Save channels from JSON file
+    tv save <file> --deploy     Save + commit to GitHub (JSON + channels.js)
     themes                      List theme catalog
+    themes save <file>          Save themes from JSON file
+    themes save <file> --deploy  Save + commit to GitHub
     plays                       List Last.fm play counts
     artist-plays <name>         Get artist play counts
 
@@ -279,16 +299,13 @@ def _dispatch_mcp(action: str, args: list[str], client, fmt: str):
         print(format_output(results, fmt))
 
     elif action == "jukebox":
-        result = client.jukebox_songs()
-        print(result)
+        _dispatch_jukebox(args, client, fmt)
 
     elif action == "tv":
-        result = client.tv_channels()
-        print(result)
+        _dispatch_tv(args, client, fmt)
 
     elif action == "themes":
-        result = client.themes()
-        print(result)
+        _dispatch_themes(args, client, fmt)
 
     elif action == "plays":
         results = client.play_counts()
@@ -710,6 +727,166 @@ Options:
         print(f"Unknown rights action: {action!r}", file=sys.stderr)
         print("Run 'magmascript rights --help' for available actions.", file=sys.stderr)
         sys.exit(1)
+
+
+def _dispatch_jukebox(args: list[str], client, fmt: str):
+    """Dispatch jukebox subcommands."""
+    if not args or args[0] == "--help":
+        print("""Jukebox management.
+
+Usage:
+    magmascript mcp jukebox                        List songs
+    magmascript mcp jukebox save <file.json>       Save songs from JSON file
+    magmascript mcp jukebox save <file.json> --deploy  Save + commit to GitHub
+""")
+        sys.exit(0)
+
+    sub = args[0]
+    rest = args[1:]
+
+    if sub == "save":
+        if not rest:
+            print("Usage: mcp jukebox save <file.json> [--deploy]", file=sys.stderr)
+            sys.exit(1)
+        file_path = rest[0]
+        deploy = "--deploy" in rest
+
+        try:
+            with open(file_path) as f:
+                songs = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Error reading {file_path}: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        songs_json = json.dumps(songs, indent=2)
+        result = client.update_jukebox_songs(songs_json)
+        print(result)
+
+        if deploy:
+            from magmascript.domains.gh import GHClient
+            config = get_config()
+            gh = GHClient(config)
+            try:
+                msg = "Update jukebox songs via magmascript"
+                result = gh.commit_multiple(
+                    [{"path": "arcade/admin/jukebox-songs.json", "content": songs_json}],
+                    msg,
+                )
+                print(result)
+            finally:
+                gh.close()
+    else:
+        # Default: list songs
+        result = client.jukebox_songs()
+        print(result)
+
+
+def _dispatch_tv(args: list[str], client, fmt: str):
+    """Dispatch TV channel subcommands."""
+    if not args or args[0] == "--help":
+        print("""TV channel management.
+
+Usage:
+    magmascript mcp tv                         List channels
+    magmascript mcp tv save <file.json>        Save channels from JSON file
+    magmascript mcp tv save <file.json> --deploy  Save + commit (JSON + channels.js)
+""")
+        sys.exit(0)
+
+    sub = args[0]
+    rest = args[1:]
+
+    if sub == "save":
+        if not rest:
+            print("Usage: mcp tv save <file.json> [--deploy]", file=sys.stderr)
+            sys.exit(1)
+        file_path = rest[0]
+        deploy = "--deploy" in rest
+
+        try:
+            with open(file_path) as f:
+                channels = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Error reading {file_path}: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        channels_json = json.dumps(channels, indent=2)
+        result = client.update_tv_channels(channels_json)
+        print(result)
+
+        if deploy:
+            from magmascript.domains.gh import GHClient
+            config = get_config()
+            gh = GHClient(config)
+            try:
+                channels_js = _generate_channels_js(channels)
+                msg = "Update TV channels via magmascript"
+                result = gh.commit_multiple(
+                    [
+                        {"path": "arcade/admin/tv-channels.json", "content": channels_json},
+                        {"path": "visual/tv/channels.js", "content": channels_js},
+                    ],
+                    msg,
+                )
+                print(result)
+            finally:
+                gh.close()
+    else:
+        # Default: list channels
+        result = client.tv_channels()
+        print(result)
+
+
+def _dispatch_themes(args: list[str], client, fmt: str):
+    """Dispatch theme subcommands."""
+    if not args or args[0] == "--help":
+        print("""Theme management.
+
+Usage:
+    magmascript mcp themes                       List themes
+    magmascript mcp themes save <file.json>      Save themes from JSON file
+    magmascript mcp themes save <file.json> --deploy  Save + commit to GitHub
+""")
+        sys.exit(0)
+
+    sub = args[0]
+    rest = args[1:]
+
+    if sub == "save":
+        if not rest:
+            print("Usage: mcp themes save <file.json> [--deploy]", file=sys.stderr)
+            sys.exit(1)
+        file_path = rest[0]
+        deploy = "--deploy" in rest
+
+        try:
+            with open(file_path) as f:
+                themes = json.load(f)
+        except (FileNotFoundError, json.JSONDecodeError) as e:
+            print(f"Error reading {file_path}: {e}", file=sys.stderr)
+            sys.exit(1)
+
+        themes_json = json.dumps(themes, indent=2)
+        result = client.update_themes(themes_json)
+        print(result)
+
+        if deploy:
+            from magmascript.domains.gh import GHClient
+            config = get_config()
+            gh = GHClient(config)
+            try:
+                msg = "Update themes via magmascript"
+                result = gh.commit_multiple(
+                    [{"path": "arcade/admin/themes.json", "content": themes_json}],
+                    msg,
+                )
+                print(result)
+            finally:
+                gh.close()
+    else:
+        # Default: list themes
+        result = client.themes()
+        print(result)
 
 
 def _dispatch_cache(action: str, args: list[str], fmt: str):
