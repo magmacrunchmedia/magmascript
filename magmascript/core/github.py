@@ -168,6 +168,60 @@ class GitHubClient:
         """Close an issue."""
         return self.patch(f"{self._repo_path}/issues/{number}", {"state": "closed"})
 
+    def commit_multiple(self, files: list[dict[str, str]], message: str, branch: str = "main") -> dict:
+        """Commit multiple files atomically using the Git Data API.
+
+        Args:
+            files: List of {"path": str, "content": str} dicts
+            message: Commit message
+            branch: Branch name (default "main")
+
+        Returns:
+            The commit data dict
+        """
+        # 1. Get the branch ref → commit SHA
+        ref = self.get(f"{self._repo_path}/git/refs/heads/{branch}")
+        commit_sha = ref["object"]["sha"]
+
+        # 2. Get the commit → tree SHA
+        commit = self.get(f"{self._repo_path}/git/commits/{commit_sha}")
+        base_tree_sha = commit["tree"]["sha"]
+
+        # 3. Create blobs for each file
+        tree_items = []
+        for f in files:
+            blob = self.post(f"{self._repo_path}/git/blobs", {
+                "content": base64.b64encode(f["content"].encode("utf-8")).decode("utf-8"),
+                "encoding": "base64",
+            })
+            tree_items.append({
+                "path": f["path"],
+                "mode": "100644",
+                "type": "blob",
+                "sha": blob["sha"],
+            })
+
+        # 4. Create a new tree
+        tree = self.post(f"{self._repo_path}/git/trees", {
+            "base_tree": base_tree_sha,
+            "tree": tree_items,
+        })
+
+        # 5. Create a new commit
+        new_commit = self.post(f"{self._repo_path}/git/commits", {
+            "message": message,
+            "tree": tree["sha"],
+            "parents": [commit_sha],
+        })
+
+        # 6. Update the ref
+        self.patch(f"{self._repo_path}/git/refs/heads/{branch}", {
+            "sha": new_commit["sha"],
+            "force": False,
+        })
+
+        return new_commit
+
     def close(self):
         """Close the HTTP client."""
         self._http.close()

@@ -219,13 +219,25 @@ class MCPClient:
         """Read the jukebox song list."""
         return self._call("get_jukebox_songs")
 
+    def update_jukebox_songs(self, songs_json: str) -> str:
+        """Write jukebox songs (JSON string)."""
+        return self._call("update_jukebox_songs", {"songs_json": songs_json})
+
     def tv_channels(self) -> str:
         """Read the TV channel list."""
         return self._call("get_tv_channels")
 
+    def update_tv_channels(self, channels_json: str) -> str:
+        """Write TV channels (JSON string)."""
+        return self._call("update_tv_channels", {"channels_json": channels_json})
+
     def themes(self) -> str:
         """Read the theme catalog."""
         return self._call("get_themes")
+
+    def update_themes(self, themes_json: str) -> str:
+        """Write themes (JSON string)."""
+        return self._call("update_themes", {"themes_json": themes_json})
 
     def play_counts(self) -> list[PlayCount]:
         """List all artists with their Last.fm play counts."""
