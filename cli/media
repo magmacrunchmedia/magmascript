@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# magmascript Media wrapper — shorthand for media search
+#
+# Usage:
+#   media search "pixel art"
+#   media search "album cover" --source pexels
+#   media providers
+#
+# Install:
+#   chmod +x cli/media
+#   ln -s $(pwd)/cli/media ~/bin/media
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+
+if command -v magmascript &>/dev/null; then
+    exec magmascript media "$@"
+fi
+
+exec python3 -m magmascript.cli media "$@"

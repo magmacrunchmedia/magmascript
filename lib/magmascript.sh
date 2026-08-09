@@ -163,7 +163,22 @@ gh_repo() {
     $_MAGMASCRIPT gh repo
 }
 
+# ── Media helpers ────────────────────────────────────────────────────────────
+
+media_search() {
+    $_MAGMASCRIPT media search "$@"
+}
+
+media_providers() {
+    $_MAGMASCRIPT media providers
+}
+
+media_image() {
+    $_MAGMASCRIPT media image "$@"
+}
+
 echo "magmascript shell helpers loaded."
 echo "MCP: mcp_search, mcp_scoreboards, mcp_scores, mcp_bots, ..."
 echo "Pi:  pi_status, pi_logs, pi_restart, pi_info, pi_traffic, ..."
 echo "GH:  gh_workflows, gh_trigger, gh_issues, gh_file, ..."
+echo "Media: media_search, media_providers, ..."

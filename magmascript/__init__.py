@@ -2,7 +2,7 @@
 
 __version__ = "1.0.0"
 
-from magmascript.core.config import Config, GHConfig, PIConfig, get_config, load_config, set_config
+from magmascript.core.config import Config, GHConfig, MediaConfig, PIConfig, get_config, load_config, set_config
 from magmascript.core.registry import get_domain, list_domains, register_domain
 from magmascript.core.rpc import RPCClient, RPCError, RPCResponse
 from magmascript.core.output import format_output, format_table, format_json
@@ -14,6 +14,7 @@ from magmascript import domains  # noqa: F401
 from magmascript.domains.mcp import MCPClient
 from magmascript.domains.pi import PIClient
 from magmascript.domains.gh import GHClient
+from magmascript.domains.media import MediaClient
 
 __all__ = [
     "__version__",
@@ -21,6 +22,8 @@ __all__ = [
     "GHClient",
     "GHConfig",
     "MCPClient",
+    "MediaClient",
+    "MediaConfig",
     "PIClient",
     "PIConfig",
     "RPCClient",

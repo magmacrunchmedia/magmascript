@@ -25,6 +25,7 @@ Domains:
     mcp         MagmaCrunch MCP server tools
     pi          Raspberry Pi management (direct SSH)
     gh          GitHub operations (direct API)
+    media       Multi-provider media search
 
 MCP Actions:
     search <query>              Search cached MusicBrainz entities
@@ -67,6 +68,12 @@ GitHub Actions:
     issue close <number>        Close an issue
     file <path>                 Read a file from the repo
     repo                        Repo info (test connection)
+
+Media Search:
+    search <query>              Search all providers
+    search <query> --source s   Search specific provider
+    providers                   List available providers
+    image <id> --source <src>   Get single result by ID
 
 Options:
     --json                      Output as JSON
@@ -120,8 +127,16 @@ def main():
         finally:
             client.close()
 
+    elif domain == "media":
+        from magmascript.domains.media import MediaClient
+        client = MediaClient(config)
+        try:
+            _dispatch_media(action, rest, client, fmt)
+        finally:
+            client.close()
+
     else:
-        print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh", file=sys.stderr)
+        print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media", file=sys.stderr)
         sys.exit(1)
 
 
@@ -374,6 +389,92 @@ def _dispatch_gh(action: str, args: list[str], client, fmt: str):
     else:
         print(f"Unknown GitHub action: {action!r}", file=sys.stderr)
         print("Run 'magmascript gh --help' for available actions.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _dispatch_media(action: str, args: list[str], client, fmt: str):
+    """Dispatch media search subcommands."""
+    if not action or action == "--help":
+        usage()
+
+    if action == "search":
+        if not args:
+            print("Usage: media search <query> [--source <provider>]", file=sys.stderr)
+            sys.exit(1)
+
+        query = args[0]
+        source = ""
+        media_type = ""
+        orientation = ""
+        page = 1
+        per_page = 24
+
+        i = 1
+        while i < len(args):
+            if args[i] == "--source" and i + 1 < len(args):
+                source = args[i + 1]
+                i += 2
+            elif args[i] == "--type" and i + 1 < len(args):
+                media_type = args[i + 1]
+                i += 2
+            elif args[i] == "--orientation" and i + 1 < len(args):
+                orientation = args[i + 1]
+                i += 2
+            elif args[i] == "--page" and i + 1 < len(args):
+                page = int(args[i + 1])
+                i += 2
+            elif args[i] == "--per-page" and i + 1 < len(args):
+                per_page = int(args[i + 1])
+                i += 2
+            else:
+                i += 1
+
+        result = client.search(
+            query, source=source, media_type=media_type,
+            orientation=orientation, page=page, per_page=per_page,
+        )
+
+        parts = [f"{len(result.results)} results"]
+        if result.provider_totals:
+            detail = ", ".join(f"{k}: {v}" for k, v in result.provider_totals.items())
+            parts.append(f"({detail})")
+        print("  ".join(parts))
+        print()
+        print(format_output(result.results, fmt))
+
+    elif action == "providers":
+        providers = client.list_providers()
+        for p in providers:
+            key_marker = " (needs key)" if p.needs_key else ""
+            types_str = ", ".join(p.types)
+            print(f"  {p.key:<15} {p.label:<15} [{types_str}]{key_marker}")
+
+    elif action == "image":
+        if len(args) < 2:
+            print("Usage: media image <id> --source <provider>", file=sys.stderr)
+            sys.exit(1)
+        result_id = args[0]
+        source = ""
+        i = 1
+        while i < len(args):
+            if args[i] == "--source" and i + 1 < len(args):
+                source = args[i + 1]
+                i += 2
+            else:
+                i += 1
+        if not source:
+            print("Usage: media image <id> --source <provider>", file=sys.stderr)
+            sys.exit(1)
+        result = client.get(result_id, source)
+        if result:
+            print(format_output(result, fmt))
+        else:
+            print(f"Not found: {result_id} from {source}", file=sys.stderr)
+            sys.exit(1)
+
+    else:
+        print(f"Unknown media action: {action!r}", file=sys.stderr)
+        print("Run 'magmascript media --help' for available actions.", file=sys.stderr)
         sys.exit(1)
 
 
