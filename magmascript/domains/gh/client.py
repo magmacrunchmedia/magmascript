@@ -179,6 +179,72 @@ class GHClient:
         except Exception as e:
             raise _wrap_api_error(e, f"close issue #{number}")
 
+    def create_discussion(self, title: str, body: str, category_slug: str = "high-scores") -> str:
+        """Create a GitHub Discussion using GraphQL."""
+        # First, get the repository node ID
+        try:
+            repo_info = self._client.repo_info()
+            repo_node_id = repo_info.get("node_id")
+            if not repo_node_id:
+                return "Error: Could not get repository node ID"
+        except Exception as e:
+            raise _wrap_api_error(e, "get repo info for discussion")
+
+        # Get the category ID for the slug
+        query = """
+        query($owner: String!, $name: String!) {
+            repository(owner: $owner, name: $name) {
+                discussionCategories(first: 20) {
+                    nodes {
+                        id
+                        slug
+                    }
+                }
+            }
+        }
+        """
+        try:
+            result = self._client.graphql(query, {
+                "owner": self._client.owner,
+                "name": self._client.repo,
+            })
+            categories = result.get("data", {}).get("repository", {}).get("discussionCategories", {}).get("nodes", [])
+            category_id = None
+            for cat in categories:
+                if cat.get("slug") == category_slug:
+                    category_id = cat.get("id")
+                    break
+            if not category_id:
+                return f"Error: Discussion category '{category_slug}' not found"
+        except Exception as e:
+            raise _wrap_api_error(e, "get discussion categories")
+
+        # Create the discussion
+        mutation = """
+        mutation($input: CreateDiscussionInput!) {
+            createDiscussion(input: $input) {
+                discussion {
+                    url
+                }
+            }
+        }
+        """
+        try:
+            result = self._client.graphql(mutation, {
+                "input": {
+                    "repositoryId": repo_node_id,
+                    "title": title,
+                    "body": body,
+                    "categoryCategoryId": category_id,
+                }
+            })
+            url = result.get("data", {}).get("createDiscussion", {}).get("discussion", {}).get("url")
+            if url:
+                return f"✓ Created discussion: {url}"
+            return f"Error: {result.get('errors', 'Unknown error')}"
+        except Exception as e:
+            raise _wrap_api_error(e, "create discussion")
+
     # ------------------------------------------------------------------
     # Files
     # ------------------------------------------------------------------

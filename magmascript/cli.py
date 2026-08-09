@@ -43,6 +43,7 @@ Domains:
     media       Multi-provider media search
     scores      Game high scores (direct SSH)
     rights      Music rights metadata (ISRC, ISWC, ASCAP)
+    archive     Archive page operations
     cache       Cache management (stats, clear)
 
 MCP Actions:
@@ -121,6 +122,11 @@ Rights:
     recording <uuid>            Rights data for a recording
     work <uuid>                 Rights data for a work
     export                      TSV export of all rights data
+
+Archive:
+    check-format                Validate archive HTML formatting
+    bake-cache [--dry-run]      Inlines MusicBrainz cache into HTML pages
+    generate-stubs              Generate stub HTML for new archive entities
 
 Cache:
     stats                       Show cache statistics
@@ -209,11 +215,19 @@ def main():
             finally:
                 client.close()
 
+        elif domain == "archive":
+            from magmascript.domains.archive import ArchiveClient
+            client = ArchiveClient()
+            try:
+                _dispatch_archive(action, rest, client, fmt)
+            finally:
+                pass  # ArchiveClient doesn't have a close method
+
         elif domain == "cache":
             _dispatch_cache(action, rest, fmt)
 
         else:
-            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, cache", file=sys.stderr)
+            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, archive, cache", file=sys.stderr)
             sys.exit(1)
 
     except KeyboardInterrupt:
@@ -656,44 +670,95 @@ def _dispatch_scores(action: str, args: list[str], client, fmt: str):
         print(format_output(results, fmt))
 
     elif action == "report":
-        report = client.report()
-        lines = [f"# Weekly High Scores — {report.generated_at}", ""]
-        lines.append("## Leaderboards")
-        lines.append("")
-        for board in report.scoreboards:
-            lines.append(f"### {board.game}")
-            lines.append("")
-            lines.append("| Rank | Player | Score |")
-            lines.append("|------|--------|-------|")
-            entries = client.get_scores(board.game_id, limit=5)
-            for e in entries:
-                parts = [str(e.score)]
-                if e.level:
-                    parts.append(f"L{e.level}")
-                if e.difficulty:
-                    parts.append(f"D{e.difficulty}")
-                if e.time:
-                    parts.append(e.time)
-                if e.moves:
-                    parts.append(f"{e.moves} moves")
-                if e.won is False:
-                    parts.append("lost")
-                lines.append(f"| {e.rank} | {e.initials} | {' · '.join(parts)} |")
-            if board.entries == 0:
-                lines.append("| - | No scores yet | - |")
-            lines.append("")
+        # Parse flags
+        discord_mode = "--discord" in args
+        post_discussion = "--post-discussion" in args
+        post_discord = "--post-discord" in args
 
-        lines.append("## Stats")
-        lines.append("")
-        lines.append(f"- **Games tracked**: {report.total_games}")
-        lines.append(f"- **Total scores**: {report.total_scores}")
-        if report.player_stats:
-            top = report.player_stats[0]
-            game_word = "game" if top.games_played == 1 else "games"
-            lines.append(f"- **Most active player**: {top.name} ({top.total_entries} scores across {top.games_played} {game_word})")
-            names = ", ".join(p.name for p in report.player_stats)
-            lines.append(f"- **Players**: {names}")
-        print("\n".join(lines))
+        if discord_mode:
+            # Output Discord JSON payload
+            payload = client.report_discord()
+            print(json.dumps({"embeds": payload.embeds}, indent=2))
+        else:
+            # Generate markdown report
+            report = client.report()
+            lines = [f"# Weekly High Scores — {report.generated_at}", ""]
+            lines.append("## Leaderboards")
+            lines.append("")
+            for board in report.scoreboards:
+                lines.append(f"### {board.game}")
+                lines.append("")
+                lines.append("| Rank | Player | Score |")
+                lines.append("|------|--------|-------|")
+                entries = client.get_scores(board.game_id, limit=5)
+                for e in entries:
+                    parts = [str(e.score)]
+                    if e.level:
+                        parts.append(f"L{e.level}")
+                    if e.difficulty:
+                        parts.append(f"D{e.difficulty}")
+                    if e.time:
+                        parts.append(e.time)
+                    if e.moves:
+                        parts.append(f"{e.moves} moves")
+                    if e.won is False:
+                        parts.append("lost")
+                    lines.append(f"| {e.rank} | {e.initials} | {' · '.join(parts)} |")
+                if board.entries == 0:
+                    lines.append("| - | No scores yet | - |")
+                lines.append("")
+
+            lines.append("## Stats")
+            lines.append("")
+            lines.append(f"- **Games tracked**: {report.total_games}")
+            lines.append(f"- **Total scores**: {report.total_scores}")
+            if report.player_stats:
+                top = report.player_stats[0]
+                game_word = "game" if top.games_played == 1 else "games"
+                lines.append(f"- **Most active player**: {top.name} ({top.total_entries} scores across {top.games_played} {game_word})")
+                names = ", ".join(p.name for p in report.player_stats)
+                lines.append(f"- **Players**: {names}")
+            markdown = "\n".join(lines)
+            print(markdown)
+
+            # Post to GitHub Discussion if requested
+            if post_discussion:
+                from magmascript.core.config import get_config
+                from magmascript.domains.gh import GHClient
+                config = get_config()
+                gh = GHClient(config)
+                try:
+                    date = datetime.now().strftime("%Y-%m-%d")
+                    title = f"Weekly High Scores — {date}"
+                    result = gh.create_discussion(title, markdown, "high-scores")
+                    print(result)
+                finally:
+                    gh.close()
+
+        # Post to Discord if requested
+        if post_discord:
+            from magmascript.core.config import get_config
+            config = get_config()
+            webhook_url = config.discord.webhook_url if hasattr(config, 'discord') else None
+            if not webhook_url:
+                print("Error: Discord webhook URL not configured", file=sys.stderr)
+                sys.exit(1)
+            
+            # Get Discord payload
+            payload = client.report_discord()
+            import httpx
+            try:
+                resp = httpx.post(
+                    webhook_url,
+                    json={"embeds": payload.embeds},
+                    headers={"Content-Type": "application/json"},
+                    timeout=10.0,
+                )
+                resp.raise_for_status()
+                print("✓ Posted to Discord")
+            except Exception as e:
+                print(f"Error posting to Discord: {e}", file=sys.stderr)
+                sys.exit(1)
 
     elif action == "reset":
         if not args:
@@ -823,6 +888,61 @@ Options:
     else:
         print(f"Unknown rights action: {action!r}", file=sys.stderr)
         print("Run 'magmascript rights --help' for available actions.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _dispatch_archive(action: str, args: list[str], client, fmt: str):
+    """Dispatch Archive subcommands."""
+    if not action or action == "--help":
+        print("""Archive page operations.
+
+Usage:
+    magmascript archive check-format        Validate archive HTML formatting
+    magmascript archive bake-cache          Inlines MusicBrainz cache into HTML pages
+    magmascript archive bake-cache --dry-run  Preview changes without writing
+    magmascript archive generate-stubs      Generate stub HTML for new archive entities
+""")
+        sys.exit(0)
+
+    if action == "check-format":
+        warnings = client.check_format()
+        if fmt == "json":
+            print(json.dumps([{"file": w.file, "line": w.line, "msg": w.msg} for w in warnings], indent=2))
+        else:
+            if not warnings:
+                print("all checks passed")
+            else:
+                for w in warnings:
+                    print(f"\nWARN  {w.file}:{w.line}")
+                    print(f"      {w.msg}")
+                print(f"\n{len(warnings)} warning{'s' if len(warnings) != 1 else ''} found")
+        if warnings:
+            sys.exit(1)
+
+    elif action == "bake-cache":
+        dry_run = "--dry-run" in args
+        result = client.bake_cache(dry_run=dry_run)
+        if fmt == "json":
+            print(json.dumps({"baked": result.baked, "skipped": result.skipped, "errors": result.errors}, indent=2))
+        else:
+            print(f"\nDone! {result.baked} pages baked, {result.skipped} skipped.")
+            if dry_run:
+                print("(dry run — no files were written)")
+            if result.errors:
+                print(f"\nErrors:")
+                for err in result.errors:
+                    print(f"  {err}")
+
+    elif action == "generate-stubs":
+        result = client.generate_stubs()
+        if fmt == "json":
+            print(json.dumps(result, indent=2))
+        else:
+            print(f"Generated {result['generated']} stubs, skipped {result['skipped']}")
+
+    else:
+        print(f"Unknown archive action: {action!r}", file=sys.stderr)
+        print("Run 'magmascript archive --help' for available actions.", file=sys.stderr)
         sys.exit(1)
 
 
