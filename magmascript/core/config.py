@@ -71,15 +71,15 @@ class Config:
 
 
 def _load_toml(path: Path) -> dict:
-    """Load a TOML file. Returns empty dict if not found or tomli unavailable."""
+    """Load a TOML file. Returns empty dict if not found."""
     if not path.is_file():
         return {}
     try:
-        import tomli
+        import tomllib
 
-        return tomli.loads(path.read_text())
+        return tomllib.loads(path.read_text())
     except ImportError:
-        # Python < 3.11 without tomli
+        # Python < 3.11
         return {}
     except Exception:
         return {}
