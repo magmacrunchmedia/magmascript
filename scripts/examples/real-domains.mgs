@@ -1,0 +1,44 @@
+// real-domains.mgs — Test real domain connections
+// Requires MAGMA_API_KEY environment variable
+// Note: MCP server may return 401 if API key is expired
+
+print("=== MCP Domain Test ===")
+print("")
+
+// Search for artists
+print("Searching for 'aphex twin'...")
+results = mcp.search("aphex twin")
+print(f"Found {len(results)} results:")
+for r in results {
+    print(f"  {r.name} ({r.type})")
+}
+
+print("")
+
+// Scoreboards
+print("Scoreboards:")
+boards = mcp.scoreboards()
+for b in boards {
+    print(f"  {b.game}: {b.entries} entries")
+}
+
+print("")
+
+// Arcade games
+print("Arcade games:")
+games = mcp.arcade_games()
+for g in games {
+    print(f"  {g.name} ({g.path})")
+}
+
+print("")
+
+// Archive pages
+print("Archive pages:")
+pages = mcp.archive_pages()
+for p in pages {
+    print(f"  {p.name} ({p.category})")
+}
+
+print("")
+print("=== Done ===")

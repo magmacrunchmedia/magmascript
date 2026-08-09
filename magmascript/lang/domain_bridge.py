@@ -25,6 +25,16 @@ class DomainProxy:
 
         return wrapper
 
+    def close(self) -> None:
+        if hasattr(self._client, "close"):
+            try:
+                self._client.close()
+            except Exception:
+                pass
+
+    def __del__(self) -> None:
+        self.close()
+
     def __repr__(self) -> str:
         return f"<domain:{self._name}>"
 
@@ -85,11 +95,17 @@ def wrap_result(result: Any) -> Any:
 
 
 def create_domain_proxies() -> dict[str, DomainProxy]:
+    from magmascript.core.config import get_config
+
     proxies = {}
+    config = get_config()
+
     for name in list_domains():
         try:
-            client = get_domain(name)
+            client_class = get_domain(name)
+            client = client_class(config)
             proxies[name] = DomainProxy(name, client)
         except Exception:
             pass
+
     return proxies
