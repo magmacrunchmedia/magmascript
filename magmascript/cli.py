@@ -27,6 +27,7 @@ Domains:
     pi          Raspberry Pi management (direct SSH)
     gh          GitHub operations (direct API)
     media       Multi-provider media search
+    scores      Game high scores (direct SSH)
 
 MCP Actions:
     search <query>              Search cached MusicBrainz entities
@@ -75,6 +76,11 @@ Media Search:
     search <query> --source s   Search specific provider
     providers                   List available providers
     image <id> --source <src>   Get single result by ID
+
+Scores:
+    list                        List all games with entry counts
+    get <game> [limit]          Get leaderboard for a game (default top 20)
+    report                      Generate full markdown report
 
 Options:
     --json                      Output as JSON
@@ -137,8 +143,16 @@ def main():
             finally:
                 client.close()
 
+        elif domain == "scores":
+            from magmascript.domains.scores import ScoresClient
+            client = ScoresClient(config)
+            try:
+                _dispatch_scores(action, rest, client, fmt)
+            finally:
+                client.close()
+
         else:
-            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media", file=sys.stderr)
+            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores", file=sys.stderr)
             sys.exit(1)
 
     except KeyboardInterrupt:
@@ -492,6 +506,69 @@ def _dispatch_media(action: str, args: list[str], client, fmt: str):
     else:
         print(f"Unknown media action: {action!r}", file=sys.stderr)
         print("Run 'magmascript media --help' for available actions.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _dispatch_scores(action: str, args: list[str], client, fmt: str):
+    """Dispatch Scores subcommands."""
+    if not action or action == "--help":
+        usage()
+
+    if action == "list":
+        results = client.list_scoreboards()
+        print(format_output(results, fmt))
+
+    elif action == "get":
+        if not args:
+            print("Usage: scores get <game> [limit]", file=sys.stderr)
+            sys.exit(1)
+        limit = int(args[1]) if len(args) > 1 else 20
+        results = client.get_scores(args[0], limit)
+        print(format_output(results, fmt))
+
+    elif action == "report":
+        report = client.report()
+        lines = [f"# Weekly High Scores — {report.generated_at}", ""]
+        lines.append("## Leaderboards")
+        lines.append("")
+        for board in report.scoreboards:
+            lines.append(f"### {board.game}")
+            lines.append("")
+            lines.append("| Rank | Player | Score |")
+            lines.append("|------|--------|-------|")
+            entries = client.get_scores(board.game_id, limit=5)
+            for e in entries:
+                parts = [str(e.score)]
+                if e.level:
+                    parts.append(f"L{e.level}")
+                if e.difficulty:
+                    parts.append(f"D{e.difficulty}")
+                if e.time:
+                    parts.append(e.time)
+                if e.moves:
+                    parts.append(f"{e.moves} moves")
+                if e.won is False:
+                    parts.append("lost")
+                lines.append(f"| {e.rank} | {e.initials} | {' · '.join(parts)} |")
+            if board.entries == 0:
+                lines.append("| - | No scores yet | - |")
+            lines.append("")
+
+        lines.append("## Stats")
+        lines.append("")
+        lines.append(f"- **Games tracked**: {report.total_games}")
+        lines.append(f"- **Total scores**: {report.total_scores}")
+        if report.player_stats:
+            top = report.player_stats[0]
+            game_word = "game" if top.games_played == 1 else "games"
+            lines.append(f"- **Most active player**: {top.name} ({top.total_entries} scores across {top.games_played} {game_word})")
+            names = ", ".join(p.name for p in report.player_stats)
+            lines.append(f"- **Players**: {names}")
+        print("\n".join(lines))
+
+    else:
+        print(f"Unknown scores action: {action!r}", file=sys.stderr)
+        print("Run 'magmascript scores --help' for available actions.", file=sys.stderr)
         sys.exit(1)
 
 

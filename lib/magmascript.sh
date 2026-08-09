@@ -177,8 +177,23 @@ media_image() {
     $_MAGMASCRIPT media image "$@"
 }
 
+# ── Scores helpers ───────────────────────────────────────────────────────────
+
+scores_list() {
+    $_MAGMASCRIPT scores list
+}
+
+scores_get() {
+    $_MAGMASCRIPT scores get "$@"
+}
+
+scores_report() {
+    $_MAGMASCRIPT scores report
+}
+
 echo "magmascript shell helpers loaded."
 echo "MCP: mcp_search, mcp_scoreboards, mcp_scores, mcp_bots, ..."
 echo "Pi:  pi_status, pi_logs, pi_restart, pi_info, pi_traffic, ..."
 echo "GH:  gh_workflows, gh_trigger, gh_issues, gh_file, ..."
 echo "Media: media_search, media_providers, ..."
+echo "Scores: scores_list, scores_get, scores_report"
