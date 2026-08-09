@@ -94,6 +94,9 @@ GitHub Actions:
     issue close <number>        Close an issue
     file <path>                 Read a file from the repo
     repo                        Repo info (test connection)
+    sync                        Diff local data vs GitHub, commit changes
+    sync --dry-run              Preview changes without committing
+    sync --message "..."        Custom commit message
 
 Media Search:
     search <query>              Search all providers
@@ -524,6 +527,19 @@ def _dispatch_gh(action: str, args: list[str], client, fmt: str):
         print(f"  Default branch: {info.get('default_branch', '?')}")
         print(f"  Stars: {info.get('stargazers_count', '?')}")
         print(f"  Forks: {info.get('forks_count', '?')}")
+
+    elif action == "sync":
+        message = ""
+        dry_run = False
+        if "--dry-run" in args:
+            dry_run = True
+            args.remove("--dry-run")
+        if "--message" in args:
+            idx = args.index("--message")
+            if idx + 1 < len(args):
+                message = args[idx + 1]
+        result = client.sync_all(message=message, dry_run=dry_run)
+        print(result)
 
     else:
         print(f"Unknown GitHub action: {action!r}", file=sys.stderr)
