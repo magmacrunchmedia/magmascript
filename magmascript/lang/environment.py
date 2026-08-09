@@ -3,9 +3,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from magmascript.lang.util import suggest
+
 
 class EnvironmentError(Exception):
-    pass
+    def __init__(self, message: str, suggestion: str | None = None) -> None:
+        self.suggestion = suggestion
+        super().__init__(message)
 
 
 @dataclass
@@ -18,7 +22,9 @@ class Environment:
             return self.variables[name]
         if self.parent is not None:
             return self.parent.get(name)
-        raise EnvironmentError(f"Undefined variable: {name}")
+        candidates = self._collect_names()
+        hint = suggest(name, candidates) if candidates else None
+        raise EnvironmentError(f"Undefined variable '{name}'", hint)
 
     def set(self, name: str, value: Any) -> None:
         if name in self.variables:
@@ -41,3 +47,9 @@ class Environment:
 
     def child(self) -> Environment:
         return Environment(parent=self)
+
+    def _collect_names(self) -> list[str]:
+        names = list(self.variables.keys())
+        if self.parent is not None:
+            names.extend(self.parent._collect_names())
+        return names

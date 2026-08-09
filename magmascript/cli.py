@@ -331,16 +331,22 @@ Options:
     try:
         source = script_path.read_text()
         from magmascript.lang.interpreter import Interpreter
-        from magmascript.lang.parser import parse
+        from magmascript.lang.lexer import Lexer
+        from magmascript.lang.parser import Parser
 
-        program = parse(source)
-        interpreter = Interpreter()
+        filename = str(script_path)
+        tokens = Lexer(source, filename=filename).tokenize()
+        program = Parser(tokens, source=source, filename=filename).parse()
+        interpreter = Interpreter(source=source, filename=filename)
         interpreter.run(program)
     except KeyboardInterrupt:
         print("\nInterrupted.", file=sys.stderr)
         sys.exit(130)
     except Exception as e:
-        print(f"Error: {e}", file=sys.stderr)
+        if hasattr(e, "format"):
+            print(e.format(), file=sys.stderr)
+        else:
+            print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 

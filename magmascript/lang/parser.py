@@ -1,18 +1,101 @@
 from __future__ import annotations
 
-from magmascript.lang.tokens import Token, TokenType
+from magmascript.lang.tokens import Token, TokenType, KEYWORDS
 from magmascript.lang import ast_nodes as ast
+from magmascript.lang.util import suggest
+
+
+# Token type to human-readable name
+TOKEN_NAMES: dict[TokenType, str] = {
+    TokenType.LPAREN: "'('",
+    TokenType.RPAREN: "')'",
+    TokenType.LBRACE: "'{'",
+    TokenType.RBRACE: "'}'",
+    TokenType.LBRACKET: "'['",
+    TokenType.RBRACKET: "']'",
+    TokenType.COMMA: "','",
+    TokenType.COLON: "':'",
+    TokenType.SEMICOLON: "';'",
+    TokenType.EQ: "'='",
+    TokenType.EQEQ: "'=='",
+    TokenType.NEQ: "'!='",
+    TokenType.LT: "'<'",
+    TokenType.GT: "'>'",
+    TokenType.LTE: "'<='",
+    TokenType.GTE: "'>='",
+    TokenType.PLUS: "'+'",
+    TokenType.MINUS: "'-'",
+    TokenType.STAR: "'*'",
+    TokenType.SLASH: "'/'",
+    TokenType.PERCENT: "'%'",
+    TokenType.AND: "'and'",
+    TokenType.OR: "'or'",
+    TokenType.NOT: "'not'",
+    TokenType.DOT: "'.'",
+    TokenType.ARROW: "'->'",
+    TokenType.IF: "'if'",
+    TokenType.ELSE: "'else'",
+    TokenType.FOR: "'for'",
+    TokenType.IN: "'in'",
+    TokenType.WHILE: "'while'",
+    TokenType.FN: "'fn'",
+    TokenType.RETURN: "'return'",
+    TokenType.BREAK: "'break'",
+    TokenType.CONTINUE: "'continue'",
+    TokenType.PRINT: "'print'",
+    TokenType.TRUE: "'true'",
+    TokenType.FALSE: "'false'",
+    TokenType.NONE: "'none'",
+    TokenType.NEWLINE: "newline",
+    TokenType.EOF: "end of file",
+}
+
+
+def token_display(token: Token) -> str:
+    name = TOKEN_NAMES.get(token.type, token.type.name)
+    if token.type == TokenType.IDENTIFIER:
+        return f"identifier '{token.value}'"
+    if token.type == TokenType.NUMBER:
+        return f"number {token.value}"
+    if token.type == TokenType.STRING:
+        kind, value = token.value
+        preview = value[:20] + "..." if len(value) > 20 else value
+        return f"string \"{preview}\""
+    return name
 
 
 class ParseError(Exception):
-    def __init__(self, message: str, token: Token) -> None:
-        super().__init__(f"Line {token.line}, Column {token.column}: {message}")
+    def __init__(self, message: str, token: Token, source_line: str | None = None, filename: str | None = None) -> None:
         self.token = token
+        self.source_line = source_line
+        self.filename = filename
+        self.message = message
+        super().__init__(message)
+
+    def format(self) -> str:
+        parts = []
+        loc = f"line {self.token.line}, column {self.token.column}"
+        if self.filename:
+            loc = f"{self.filename}:{loc}"
+        parts.append(f"Parse error at {loc}")
+
+        if self.source_line is not None:
+            line_num = str(self.token.line)
+            padding = " " * len(line_num)
+            parts.append(f"  {padding} |")
+            parts.append(f"  {line_num} | {self.source_line}")
+            caret = " " * (self.token.column - 1) + "^"
+            parts.append(f"  {padding} | {caret}")
+
+        parts.append(self.message)
+        return "\n".join(parts)
 
 
 class Parser:
-    def __init__(self, tokens: list[Token]) -> None:
+    def __init__(self, tokens: list[Token], source: str | None = None, filename: str | None = None) -> None:
         self.tokens = tokens
+        self.source = source
+        self.filename = filename
         self.pos = 0
 
     def peek(self) -> Token:
@@ -23,10 +106,26 @@ class Parser:
         self.pos += 1
         return token
 
+    def _get_source_line(self, line_num: int) -> str | None:
+        if self.source is None:
+            return None
+        lines = self.source.split("\n")
+        if 1 <= line_num <= len(lines):
+            return lines[line_num - 1]
+        return None
+
+    def error(self, message: str, token: Token | None = None) -> ParseError:
+        if token is None:
+            token = self.peek()
+        source_line = self._get_source_line(token.line)
+        return ParseError(message, token, source_line, self.filename)
+
     def expect(self, token_type: TokenType) -> Token:
         token = self.peek()
         if token.type != token_type:
-            raise ParseError(f"Expected {token_type.name}, got {token.type.name}", token)
+            expected = TOKEN_NAMES.get(token_type, token_type.name)
+            got = token_display(token)
+            raise self.error(f"Expected {expected}, got {got}", token)
         return self.advance()
 
     def match(self, *types: TokenType) -> Token | None:
@@ -488,7 +587,15 @@ class Parser:
                     column=token.column,
                 )
 
-        raise ParseError(f"Unexpected token: {token.type.name}", token)
+        got = token_display(token)
+        msg = f"Unexpected {got}"
+
+        if token.type == TokenType.IDENTIFIER:
+            kw = suggest(token.value, list(KEYWORDS.keys()))
+            if kw:
+                msg += f" — did you mean '{kw}'?"
+
+        raise self.error(msg, token)
 
     def parse_interpolation(self, template: str) -> list[ast.ASTNode]:
         parts = []
