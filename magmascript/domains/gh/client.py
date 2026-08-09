@@ -7,6 +7,10 @@ Caches workflow data to avoid rate limits.
 
 from __future__ import annotations
 
+import json
+import os
+from pathlib import Path
+
 import httpx
 from dataclasses import asdict
 
@@ -42,6 +46,19 @@ def _wrap_api_error(e: Exception, context: str = "") -> APIError:
     if isinstance(e, KeyError):
         return APIError(f"Unknown workflow: {e}" if not context else f"{context}: {e}")
     return APIError(f"GitHub API error: {e}" if not context else f"{context}: {e}")
+
+
+def _generate_channels_js(channels: list[dict]) -> str:
+    """Generate visual/tv/channels.js from TV channel data."""
+    lines = []
+    for ch in channels:
+        lines.append(
+            '    { title: ' + json.dumps(ch.get("title", "")) +
+            ', artist: ' + json.dumps(ch.get("artist", "")) +
+            ', id: ' + json.dumps(ch.get("id", "")) +
+            ', year: ' + json.dumps(ch.get("year", "")) + ' }'
+        )
+    return 'window.TV_CHANNELS = [\n' + ',\n'.join(lines) + '\n];\n'
 
 
 class GHClient:
@@ -200,6 +217,96 @@ class GHClient:
             return f"✓ Committed {len(files)} file(s) ({sha}): {paths}"
         except Exception as e:
             raise _wrap_api_error(e, "commit multiple files")
+
+    def sync_all(self, *, message: str = "", dry_run: bool = False) -> str:
+        """Diff local data files against GitHub and commit changes atomically.
+
+        Syncs: jukebox songs, TV channels (JSON + generated JS), themes, scores.
+
+        Args:
+            message: Commit message (defaults to "Update via magmascript")
+            dry_run: If True, show what would change without committing
+        """
+        # Find the project root (look for .git directory)
+        project_root = Path.cwd()
+        while project_root != project_root.parent:
+            if (project_root / ".git").is_dir():
+                break
+            project_root = project_root.parent
+        else:
+            raise APIError("Not in a git repository")
+
+        admin_dir = project_root / "arcade" / "admin"
+        scores_dir = admin_dir / "scores"
+
+        # Define files to sync: (local_path, github_path, label)
+        files_to_check = []
+
+        # Jukebox
+        jukebox_local = admin_dir / "jukebox-songs.json"
+        if jukebox_local.is_file():
+            files_to_check.append((jukebox_local, "arcade/admin/jukebox-songs.json", "jukebox"))
+
+        # TV channels JSON
+        tv_json_local = admin_dir / "tv-channels.json"
+        if tv_json_local.is_file():
+            files_to_check.append((tv_json_local, "arcade/admin/tv-channels.json", "tv-json"))
+
+        # Themes
+        themes_local = admin_dir / "themes.json"
+        if themes_local.is_file():
+            files_to_check.append((themes_local, "arcade/admin/themes.json", "themes"))
+
+        # Score files
+        if scores_dir.is_dir():
+            for f in sorted(scores_dir.glob("*.json")):
+                github_path = f"arcade/admin/scores/{f.name}"
+                files_to_check.append((f, github_path, f"score:{f.stem}"))
+
+        # Compare each file against GitHub
+        files_to_commit = []
+        files_changed = []
+
+        for local_path, github_path, label in files_to_check:
+            try:
+                local_content = local_path.read_text()
+            except Exception:
+                continue
+
+            try:
+                remote_content, _ = self.get_file(github_path)
+            except Exception:
+                remote_content = None
+
+            if remote_content is None or local_content.strip() != remote_content.strip():
+                files_to_commit.append({"path": github_path, "content": local_content})
+                files_changed.append(label)
+
+        # If TV JSON changed, also generate and include channels.js
+        if "tv-json" in files_changed:
+            tv_json_path = admin_dir / "tv-channels.json"
+            try:
+                channels = json.loads(tv_json_path.read_text())
+                channels_js = _generate_channels_js(channels)
+                files_to_commit.append({"path": "visual/tv/channels.js", "content": channels_js})
+                files_changed.append("tv-js")
+            except Exception:
+                pass
+
+        # Report
+        if not files_changed:
+            return "Everything already in sync"
+
+        if dry_run:
+            lines = [f"Would commit {len(files_to_commit)} file(s):"]
+            for f in files_to_commit:
+                lines.append(f"  {f['path']}")
+            return "\n".join(lines)
+
+        # Commit atomically
+        commit_msg = message or "Update via magmascript"
+        result = self.commit_multiple(files_to_commit, commit_msg)
+        return result + f"\nFiles changed: {', '.join(files_changed)}"
 
     # ------------------------------------------------------------------
     # Repo
