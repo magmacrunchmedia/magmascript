@@ -59,7 +59,9 @@ def load_config(*, config_path: Path | None = None, env_prefix: str = "MAGMA_") 
     return Config(
         mcp=MCPConfig(
             url=os.environ.get(f"{env_prefix}URL", mcp_section.get("url", DEFAULT_MCP_URL)),
-            api_key=os.environ.get(f"{env_prefix}API_KEY", mcp_section.get("api_key", "")),
+            api_key=os.environ.get(f"{env_prefix}API_KEY")
+            or os.environ.get("MCP_API_KEY", "")
+            or mcp_section.get("api_key", ""),
         ),
     )
 
