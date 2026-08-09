@@ -45,6 +45,7 @@ Domains:
     rights      Music rights metadata (ISRC, ISWC, ASCAP)
     archive     Archive page operations
     mb          MusicBrainz API client
+    lastfm      Last.fm API client
     cache       Cache management (stats, clear)
 
 MCP Actions:
@@ -134,6 +135,11 @@ MusicBrainz:
     backup --dry-run            Preview backup without writing files
     backup --skip-existing      Skip already-cached entities
     backup --stale-only         Only refresh stale caches
+
+Last.fm:
+    fetch                       Fetch play counts for all artists
+    fetch --dry-run             Preview fetch without writing files
+    fetch --skip-existing       Skip already-cached artists
 
 Cache:
     stats                       Show cache statistics
@@ -238,11 +244,26 @@ def main():
             finally:
                 client.close()
 
+        elif domain == "lastfm":
+            from magmascript.domains.lastfm import LastFmClient
+            try:
+                client = LastFmClient()
+            except MagmascriptError as e:
+                if action and action != "--help":
+                    print(f"Error: {e}", file=sys.stderr)
+                    sys.exit(1)
+                client = None
+            try:
+                _dispatch_lastfm(action, rest, client, fmt)
+            finally:
+                if client:
+                    client.close()
+
         elif domain == "cache":
             _dispatch_cache(action, rest, fmt)
 
         else:
-            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, archive, mb, cache", file=sys.stderr)
+            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, archive, mb, lastfm, cache", file=sys.stderr)
             sys.exit(1)
 
     except KeyboardInterrupt:
@@ -1000,6 +1021,45 @@ Usage:
     else:
         print(f"Unknown mb action: {action!r}", file=sys.stderr)
         print("Run 'magmascript mb --help' for available actions.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _dispatch_lastfm(action: str, args: list[str], client, fmt: str):
+    """Dispatch Last.fm subcommands."""
+    if not action or action == "--help":
+        print("""Last.fm API client.
+
+Usage:
+    magmascript lastfm fetch                  Fetch play counts for all artists
+    magmascript lastfm fetch --dry-run        Preview fetch without writing files
+    magmascript lastfm fetch --skip-existing  Skip already-cached artists
+""")
+        sys.exit(0)
+
+    if action == "fetch":
+        dry_run = "--dry-run" in args
+        skip_existing = "--skip-existing" in args
+
+        result = client.fetch(
+            dry_run=dry_run,
+            skip_existing=skip_existing,
+        )
+
+        if fmt == "json":
+            print(json.dumps({
+                "completed": result.completed,
+                "skipped": result.skipped,
+                "resolved": result.resolved,
+                "errors": result.errors,
+            }, indent=2))
+        elif result.errors:
+            print(f"\nErrors ({len(result.errors)}):")
+            for err in result.errors:
+                print(f"  {err}")
+
+    else:
+        print(f"Unknown lastfm action: {action!r}", file=sys.stderr)
+        print("Run 'magmascript lastfm --help' for available actions.", file=sys.stderr)
         sys.exit(1)
 
 
