@@ -234,25 +234,31 @@ def main():
                 client.close()
 
         elif domain == "archive":
+            from pathlib import Path
             from magmascript.domains.archive import ArchiveClient
-            client = ArchiveClient()
+            project_root = Path(config.project.root) if config.project.root else None
+            client = ArchiveClient(project_root=project_root)
             try:
                 _dispatch_archive(action, rest, client, fmt)
             finally:
                 pass  # ArchiveClient doesn't have a close method
 
         elif domain == "mb":
+            from pathlib import Path
             from magmascript.domains.mb import MusicBrainzClient
-            client = MusicBrainzClient()
+            project_root = Path(config.project.root) if config.project.root else None
+            client = MusicBrainzClient(project_root=project_root)
             try:
                 _dispatch_mb(action, rest, client, fmt)
             finally:
                 client.close()
 
         elif domain == "lastfm":
+            from pathlib import Path
             from magmascript.domains.lastfm import LastFmClient
+            project_root = Path(config.project.root) if config.project.root else None
             try:
-                client = LastFmClient()
+                client = LastFmClient(project_root=project_root)
             except MagmascriptError as e:
                 if action and action != "--help":
                     print(f"Error: {e}", file=sys.stderr)
@@ -265,8 +271,10 @@ def main():
                     client.close()
 
         elif domain == "search":
+            from pathlib import Path
             from magmascript.domains.search import SearchClient
-            client = SearchClient()
+            project_root = Path(config.project.root) if config.project.root else None
+            client = SearchClient(project_root=project_root)
             try:
                 _dispatch_search(action, rest, client, fmt)
             finally:
