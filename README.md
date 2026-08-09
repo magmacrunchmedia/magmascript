@@ -16,6 +16,7 @@ python3 -m venv .venv
 ```bash
 export MAGMA_API_KEY="your-mcp-key"
 export GITHUB_TOKEN=$(gh auth token)
+export MAGMACRUNCH_ROOT="/path/to/magmacrunch.com"
 # pi domain works with no config (SSH key auth)
 ```
 
@@ -34,9 +35,12 @@ user = "jake"
 token = "ghp_..."
 owner = "magmacrunchmedia"
 repo = "magmacrunch.com"
+
+[project]
+root = "/path/to/magmacrunch.com"
 ```
 
-## Usage
+## Domains
 
 ### MCP Domain — MusicBrainz, scores, Discogs, write operations
 ```bash
@@ -73,8 +77,40 @@ magmascript gh sync                          # diff + commit all data files
 ```bash
 magmascript scores list                      # all game leaderboards
 magmascript scores get tetris                # tetris scores
+magmascript scores report                    # markdown report
+magmascript scores report --discord          # Discord JSON payload
+magmascript scores report --post-discussion  # post to GitHub Discussion
+magmascript scores report --post-discord     # post to Discord
 magmascript scores reset tetris              # reset one game (backup created)
 magmascript scores reset-all                 # reset all games
+```
+
+### Archive Domain — Archive page operations
+```bash
+magmascript archive check-format             # validate HTML formatting
+magmascript archive bake-cache               # inline MusicBrainz cache into pages
+magmascript archive bake-cache --dry-run     # preview changes
+```
+
+### MusicBrainz Domain — MusicBrainz API client
+```bash
+magmascript mb backup                        # full MusicBrainz backup
+magmascript mb backup --dry-run              # preview backup
+magmascript mb backup --skip-existing        # skip cached entities
+magmascript mb backup --stale-only           # only refresh stale caches
+```
+
+### Last.fm Domain — Last.fm API client
+```bash
+magmascript lastfm fetch                     # fetch play counts
+magmascript lastfm fetch --dry-run           # preview fetch
+magmascript lastfm fetch --skip-existing     # skip cached artists
+```
+
+### Search Domain — Site search index builder
+```bash
+magmascript search build-index               # build search-index.json
+magmascript search preview 10                # preview first 10 entries
 ```
 
 ### Rights Domain — Music rights metadata (ISRC, ISWC, ASCAP)
@@ -87,10 +123,28 @@ magmascript rights catalog "C.P. Rutledge"   # full rights catalog for an artist
 magmascript rights export                    # TSV export for ASCAP forms
 ```
 
+### Media Domain — Multi-provider media search
+```bash
+magmascript media search "sunset"            # search all providers
+magmascript media search "sunset" --source openverse  # search specific provider
+magmascript media providers                  # list available providers
+```
+
+### Cache Domain — Cache management
+```bash
+magmascript cache stats                      # show cache statistics
+magmascript cache clear                      # clear all cache
+magmascript cache clear --domain scores      # clear specific domain
+```
+
 ## Python Library
 
 ```python
-from magmascript import MCPClient, PIClient, GHClient, RightsClient
+from magmascript import MCPClient, PIClient, GHClient, ScoresClient, RightsClient
+from magmascript.domains.archive import ArchiveClient
+from magmascript.domains.mb import MusicBrainzClient
+from magmascript.domains.lastfm import LastFmClient
+from magmascript.domains.search import SearchClient
 
 # MCP
 with MCPClient() as mcp:
@@ -104,10 +158,33 @@ with PIClient() as pi:
 with GHClient() as gh:
     workflows = gh.workflows()
 
+# Scores (direct SSH)
+with ScoresClient() as scores:
+    report = scores.report()
+    discord_payload = scores.report_discord()
+
 # Music rights metadata
 with RightsClient() as rights:
     matches = rights.search("Farewell")
     catalog = rights.catalog("C.P. Rutledge")
+
+# Archive (requires project root)
+with ArchiveClient(project_root="/path/to/magmacrunch.com") as archive:
+    warnings = archive.check_format()
+    result = archive.bake_cache(dry_run=True)
+
+# MusicBrainz (requires project root)
+with MusicBrainzClient(project_root="/path/to/magmacrunch.com") as mb:
+    result = mb.backup(skip_existing=True)
+
+# Last.fm (requires API key and project root)
+with LastFmClient(project_root="/path/to/magmacrunch.com") as lastfm:
+    result = lastfm.fetch(skip_existing=True)
+
+# Search (requires project root)
+with SearchClient(project_root="/path/to/magmacrunch.com") as search:
+    result = search.build()
+    entries = search.preview(limit=10)
 ```
 
 ## Shell Helpers
@@ -127,6 +204,11 @@ Full documentation on the [Wiki](https://github.com/magmacrunchmedia/magmascript
 - [MCP Domain](https://github.com/magmacrunchmedia/magmascript/wiki/MCP-Domain)
 - [Pi Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Pi-Domain)
 - [GitHub Domain](https://github.com/magmacrunchmedia/magmascript/wiki/GitHub-Domain)
+- [Scores Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Scores-Domain)
+- [Archive Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Archive-Domain)
+- [MusicBrainz Domain](https://github.com/magmacrunchmedia/magmascript/wiki/MusicBrainz-Domain)
+- [Last.fm Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Last.fm-Domain)
+- [Search Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Search-Domain)
 - [Rights Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Rights-Domain)
 - [Architecture](https://github.com/magmacrunchmedia/magmascript/wiki/Architecture)
 - [Shell Helpers](https://github.com/magmacrunchmedia/magmascript/wiki/Shell-Helpers)
