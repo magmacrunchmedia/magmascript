@@ -15,6 +15,7 @@ from magmascript.domains.mcp import MCPClient
 from magmascript.domains.pi import PIClient
 from magmascript.domains.gh import GHClient
 from magmascript.domains.media import MediaClient
+from magmascript.domains.rights import RightsClient
 
 __all__ = [
     "__version__",
@@ -26,6 +27,7 @@ __all__ = [
     "MediaConfig",
     "PIClient",
     "PIConfig",
+    "RightsClient",
     "RPCClient",
     "RPCError",
     "RPCResponse",
