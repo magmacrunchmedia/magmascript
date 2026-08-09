@@ -53,3 +53,11 @@ class ScoresReport:
     total_scores: int
     scoreboards: list[Scoreboard]
     player_stats: list[PlayerStats] = field(default_factory=list)
+
+
+@dataclass
+class DiscordPayload:
+    """Discord embed payload for posting high scores."""
+
+    embeds: list[dict]
+    footer_text: str

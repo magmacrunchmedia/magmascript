@@ -74,6 +74,13 @@ class GitHubClient:
         resp.raise_for_status()
         return resp.json()
 
+    def graphql(self, query: str, variables: dict | None = None) -> dict:
+        """Send a GraphQL mutation or query to the GitHub API."""
+        payload: dict[str, Any] = {"query": query}
+        if variables:
+            payload["variables"] = variables
+        return self.post("/graphql", payload)
+
     def patch(self, path: str, data: dict | None = None) -> dict:
         """Send a PATCH request to the GitHub API."""
         url = self._url(path)

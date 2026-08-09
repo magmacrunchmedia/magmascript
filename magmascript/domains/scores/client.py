@@ -15,6 +15,7 @@ from magmascript.core.cache import CacheStore, get_cache
 from magmascript.core.config import Config, get_config
 from magmascript.core.exceptions import SSHError
 from magmascript.domains.scores.tools import (
+    DiscordPayload,
     PlayerStats,
     ScoreEntry,
     Scoreboard,
@@ -185,6 +186,50 @@ class ScoresClient:
             total_scores=total_scores,
             scoreboards=boards,
             player_stats=player_stats,
+        )
+
+    def report_discord(self) -> DiscordPayload:
+        """Generate a Discord embed payload for high scores."""
+        report = self.report()
+        medals = ["🥇", "🥈", "🥉"]
+        fields = []
+
+        for board in report.scoreboards:
+            entries = self.get_scores(board.game_id, limit=5)
+            if not entries:
+                value = "*No scores yet*"
+            else:
+                value_lines = []
+                for i, e in enumerate(entries):
+                    rank = medals[i] if i < 3 else f"{i + 1}."
+                    parts = [str(e.score)]
+                    if e.level:
+                        parts.append(f"L{e.level}")
+                    if e.difficulty:
+                        parts.append(f"D{e.difficulty}")
+                    if e.time:
+                        parts.append(e.time)
+                    if e.moves:
+                        parts.append(f"{e.moves} moves")
+                    if e.won is False:
+                        parts.append("lost")
+                    value_lines.append(f"{rank} **{e.initials}** — {' · '.join(parts)}")
+                value = "\n".join(value_lines)
+
+            fields.append({"name": board.game, "value": value, "inline": True})
+
+        footer_parts = [f"{report.total_games} games", f"{report.total_scores} scores"]
+        if report.player_stats:
+            footer_parts.append(f"{len(report.player_stats)} players")
+
+        return DiscordPayload(
+            embeds=[{
+                "title": f"Weekly High Scores — {report.generated_at}",
+                "fields": fields,
+                "footer": {"text": " · ".join(footer_parts)},
+                "color": 0xFF3D6E,
+            }],
+            footer_text=" · ".join(footer_parts),
         )
 
     # ------------------------------------------------------------------
