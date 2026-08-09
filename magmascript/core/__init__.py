@@ -1,5 +1,6 @@
 """Core framework for magmascript."""
 
+from magmascript.core.cache import CacheStats, CacheStore, get_cache
 from magmascript.core.config import Config, get_config, load_config, set_config
 from magmascript.core.exceptions import (
     APIError,
@@ -17,6 +18,8 @@ from magmascript.core.rpc import RPCClient, RPCError, RPCResponse
 __all__ = [
     "APIError",
     "AuthError",
+    "CacheStats",
+    "CacheStore",
     "Config",
     "ConfigError",
     "MagmascriptError",
@@ -27,6 +30,7 @@ __all__ = [
     "RPCResponse",
     "RateLimitError",
     "SSHError",
+    "get_cache",
     "get_config",
     "get_domain",
     "list_domains",

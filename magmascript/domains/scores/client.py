@@ -1,14 +1,17 @@
 """Scores domain — SSH to Pi to read score files directly.
 
 Bypasses the MCP server — reads JSON files directly via SSH.
+Caches results for faster repeated queries.
 """
 
 from __future__ import annotations
 
 import json
 import subprocess
+from dataclasses import asdict
 from datetime import datetime, timezone
 
+from magmascript.core.cache import CacheStore, get_cache
 from magmascript.core.config import Config, get_config
 from magmascript.core.exceptions import SSHError
 from magmascript.domains.scores.tools import (
@@ -25,12 +28,15 @@ class ScoresClient:
     """Direct SSH client for reading score files from the Pi.
 
     Raises SSHError on connection failures.
+    Caches results for faster repeated queries.
     """
 
     def __init__(self, config: Config | None = None):
         cfg = config or get_config()
         self._host = cfg.pi.host
         self._user = cfg.pi.user
+        self._cache = get_cache(enabled=cfg.cache.enabled)
+        self._cache_ttl = cfg.cache.ttl_scores
 
     def _ssh(self, cmd: str, *, timeout: int = 15) -> str:
         """Run a command on the Pi via SSH. Returns stdout."""
@@ -77,8 +83,14 @@ class ScoresClient:
     # Public API
     # ------------------------------------------------------------------
 
-    def list_scoreboards(self) -> list[Scoreboard]:
+    def list_scoreboards(self, *, use_cache: bool = True) -> list[Scoreboard]:
         """List all games with entry counts and top scores."""
+        cache_key = CacheStore.make_key("list_scoreboards")
+        if use_cache:
+            cached = self._cache.get("scores", cache_key)
+            if cached is not None:
+                return [Scoreboard(**b) for b in cached]
+
         files = self._list_files()
         boards = []
         for fn in files:
@@ -101,10 +113,21 @@ class ScoresClient:
                 ))
             except Exception:
                 continue
-        return sorted(boards, key=lambda b: b.game)
+        result = sorted(boards, key=lambda b: b.game)
 
-    def get_scores(self, game: str, limit: int = 20) -> list[ScoreEntry]:
+        if use_cache:
+            self._cache.set("scores", cache_key, [asdict(b) for b in result], ttl=self._cache_ttl)
+
+        return result
+
+    def get_scores(self, game: str, limit: int = 20, *, use_cache: bool = True) -> list[ScoreEntry]:
         """Get leaderboard for a specific game."""
+        cache_key = CacheStore.make_key("get_scores", game=game, limit=limit)
+        if use_cache:
+            cached = self._cache.get("scores", cache_key)
+            if cached is not None:
+                return [ScoreEntry(**e) for e in cached]
+
         data = self._read_json(f"{game}.json")
         raw = data.get("scores", [])[:limit]
         entries = []
@@ -125,6 +148,10 @@ class ScoresClient:
                 rounds=s.get("rounds"),
                 escaped=s.get("escaped"),
             ))
+
+        if use_cache:
+            self._cache.set("scores", cache_key, [asdict(e) for e in entries], ttl=self._cache_ttl)
+
         return entries
 
     def report(self) -> ScoresReport:

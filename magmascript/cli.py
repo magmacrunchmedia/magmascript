@@ -28,6 +28,7 @@ Domains:
     gh          GitHub operations (direct API)
     media       Multi-provider media search
     scores      Game high scores (direct SSH)
+    cache       Cache management (stats, clear)
 
 MCP Actions:
     search <query>              Search cached MusicBrainz entities
@@ -82,6 +83,10 @@ Scores:
     get <game> [limit]          Get leaderboard for a game (default top 20)
     report                      Generate full markdown report
 
+Cache:
+    stats                       Show cache statistics
+    clear [--domain <name>]     Clear cache entries
+
 Options:
     --json                      Output as JSON
     --table                     Output as table (default)
@@ -107,6 +112,12 @@ def main():
         rest.remove("--json")
     elif "--table" in rest:
         rest.remove("--table")
+
+    # Parse --no-cache flag
+    no_cache = False
+    if "--no-cache" in rest:
+        no_cache = True
+        rest.remove("--no-cache")
 
     config = get_config()
 
@@ -151,8 +162,11 @@ def main():
             finally:
                 client.close()
 
+        elif domain == "cache":
+            _dispatch_cache(action, rest, fmt)
+
         else:
-            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores", file=sys.stderr)
+            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, cache", file=sys.stderr)
             sys.exit(1)
 
     except KeyboardInterrupt:
@@ -569,6 +583,44 @@ def _dispatch_scores(action: str, args: list[str], client, fmt: str):
     else:
         print(f"Unknown scores action: {action!r}", file=sys.stderr)
         print("Run 'magmascript scores --help' for available actions.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _dispatch_cache(action: str, args: list[str], fmt: str):
+    """Dispatch cache subcommands."""
+    from magmascript.core.cache import get_cache
+
+    cache = get_cache()
+
+    if not action or action == "--help":
+        print("""Cache management.
+
+Usage:
+    magmascript cache stats              Show cache statistics
+    magmascript cache clear              Clear all cache
+    magmascript cache clear --domain m   Clear specific domain (media/scores/gh)
+""")
+        sys.exit(0)
+
+    if action == "stats":
+        data = cache.file_stats()
+        print(format_output(data, fmt))
+
+    elif action == "clear":
+        domain = None
+        if "--domain" in args:
+            idx = args.index("--domain")
+            if idx + 1 < len(args):
+                domain = args[idx + 1]
+            else:
+                print("Usage: cache clear --domain <name>", file=sys.stderr)
+                sys.exit(1)
+        count = cache.clear(domain=domain)
+        label = f" domain '{domain}'" if domain else ""
+        print(f"Cleared {count} cache entries{label}.")
+
+    else:
+        print(f"Unknown cache action: {action!r}", file=sys.stderr)
         sys.exit(1)
 
 

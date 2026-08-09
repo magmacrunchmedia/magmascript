@@ -2,12 +2,15 @@
 
 Uses core/github.py as the shared HTTP layer.
 Raises APIError on HTTP failures.
+Caches workflow data to avoid rate limits.
 """
 
 from __future__ import annotations
 
 import httpx
+from dataclasses import asdict
 
+from magmascript.core.cache import CacheStore, get_cache
 from magmascript.core.config import Config, get_config
 from magmascript.core.exceptions import APIError, AuthError, RateLimitError
 from magmascript.core.github import WORKFLOWS, GitHubClient
@@ -46,6 +49,7 @@ class GHClient:
 
     Wraps core/github.py with domain-specific methods that return typed results.
     Raises APIError on HTTP failures.
+    Caches workflow data to avoid rate limits.
     """
 
     def __init__(self, config: Config | None = None):
@@ -55,21 +59,40 @@ class GHClient:
             owner=cfg.gh.owner,
             repo=cfg.gh.repo,
         )
+        self._cache = get_cache(enabled=cfg.cache.enabled)
+        self._cache_ttl = cfg.cache.ttl_gh
 
     # ------------------------------------------------------------------
     # Workflows
     # ------------------------------------------------------------------
 
-    def workflows(self) -> list[Workflow]:
+    def workflows(self, *, use_cache: bool = True) -> list[Workflow]:
         """List all known workflows with their latest run status."""
+        cache_key = CacheStore.make_key("workflows")
+        if use_cache:
+            cached = self._cache.get("gh", cache_key)
+            if cached is not None:
+                return [Workflow(**w) for w in cached]
+
         try:
             runs = self._client.list_workflow_runs(limit=100)
         except Exception as e:
             raise _wrap_api_error(e, "list workflows")
-        return parse_workflow_runs(runs, WORKFLOWS)
+        result = parse_workflow_runs(runs, WORKFLOWS)
 
-    def workflow_runs(self, name: str, limit: int = 10) -> list[WorkflowRun]:
+        if use_cache:
+            self._cache.set("gh", cache_key, [asdict(w) for w in result], ttl=self._cache_ttl)
+
+        return result
+
+    def workflow_runs(self, name: str, limit: int = 10, *, use_cache: bool = True) -> list[WorkflowRun]:
         """Get recent runs for a specific workflow."""
+        cache_key = CacheStore.make_key("workflow_runs", name=name, limit=limit)
+        if use_cache:
+            cached = self._cache.get("gh", cache_key)
+            if cached is not None:
+                return [WorkflowRun(**w) for w in cached]
+
         try:
             workflow_file = self._client.get_workflow_file(name)
             data = self._client.get(
@@ -78,7 +101,7 @@ class GHClient:
         except Exception as e:
             raise _wrap_api_error(e, f"get runs for {name}")
         runs = data.get("workflow_runs", [])
-        return [
+        result = [
             WorkflowRun(
                 id=r["id"],
                 status=r.get("status", "unknown"),
@@ -90,6 +113,11 @@ class GHClient:
             )
             for r in runs
         ]
+
+        if use_cache:
+            self._cache.set("gh", cache_key, [asdict(w) for w in result], ttl=self._cache_ttl)
+
+        return result
 
     def trigger(self, name: str) -> str:
         """Trigger a workflow. Returns confirmation message."""

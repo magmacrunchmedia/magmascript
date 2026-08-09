@@ -49,6 +49,17 @@ class MediaConfig:
 
 
 @dataclass
+class CacheConfig:
+    """Cache configuration."""
+
+    enabled: bool = True
+    dir: str = ""
+    ttl_media: int = 86400  # 24h
+    ttl_scores: int = 3600  # 1h
+    ttl_gh: int = 300  # 5min
+
+
+@dataclass
 class Config:
     """Top-level magmascript configuration."""
 
@@ -56,6 +67,7 @@ class Config:
     pi: PIConfig = field(default_factory=PIConfig)
     gh: GHConfig = field(default_factory=GHConfig)
     media: MediaConfig = field(default_factory=MediaConfig)
+    cache: CacheConfig = field(default_factory=CacheConfig)
 
 
 def _load_toml(path: Path) -> dict:
@@ -86,6 +98,7 @@ def load_config(*, config_path: Path | None = None, env_prefix: str = "MAGMA_") 
     pi_section = toml.get("pi", {})
     gh_section = toml.get("gh", {})
     media_section = toml.get("media", {})
+    cache_section = toml.get("cache", {})
 
     return Config(
         mcp=MCPConfig(
@@ -108,6 +121,14 @@ def load_config(*, config_path: Path | None = None, env_prefix: str = "MAGMA_") 
         media=MediaConfig(
             pexels_key=os.environ.get(f"{env_prefix}PEXELS_KEY", media_section.get("pexels_key", "")),
             pixabay_key=os.environ.get(f"{env_prefix}PIXABAY_KEY", media_section.get("pixabay_key", "")),
+        ),
+        cache=CacheConfig(
+            enabled=os.environ.get(f"{env_prefix}CACHE_DISABLED", "") != "1"
+            and cache_section.get("enabled", True),
+            dir=cache_section.get("dir", ""),
+            ttl_media=int(cache_section.get("ttl_media", 86400)),
+            ttl_scores=int(cache_section.get("ttl_scores", 3600)),
+            ttl_gh=int(cache_section.get("ttl_gh", 300)),
         ),
     )
 
