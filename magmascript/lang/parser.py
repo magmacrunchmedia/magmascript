@@ -557,13 +557,52 @@ class Parser:
         if self.match(TokenType.LBRACKET):
             elements = []
             if not self.check(TokenType.RBRACKET):
-                elements.append(self.parse_expression())
+                first_expr = self.parse_expression()
+                if self.check(TokenType.FOR):
+                    self.advance()
+                    var_token = self.expect(TokenType.IDENTIFIER)
+                    self.expect(TokenType.IN)
+                    iterable = self.parse_expression()
+                    condition = None
+                    if self.check(TokenType.IF):
+                        self.advance()
+                        condition = self.parse_expression()
+                    self.expect(TokenType.RBRACKET)
+                    return ast.ListComprehension(
+                        element=first_expr,
+                        variable=var_token.value,
+                        iterable=iterable,
+                        condition=condition,
+                        line=token.line,
+                        column=token.column,
+                    )
+                elements.append(first_expr)
                 while self.match(TokenType.COMMA):
                     if self.check(TokenType.RBRACKET):
                         break
                     elements.append(self.parse_expression())
             self.expect(TokenType.RBRACKET)
             return ast.ListLiteral(elements=elements, line=token.line, column=token.column)
+
+        if self.match(TokenType.LBRACE):
+            keys = []
+            values = []
+            if not self.check(TokenType.RBRACE):
+                key = self.parse_expression()
+                self.expect(TokenType.COLON)
+                value = self.parse_expression()
+                keys.append(key)
+                values.append(value)
+                while self.match(TokenType.COMMA):
+                    if self.check(TokenType.RBRACE):
+                        break
+                    key = self.parse_expression()
+                    self.expect(TokenType.COLON)
+                    value = self.parse_expression()
+                    keys.append(key)
+                    values.append(value)
+            self.expect(TokenType.RBRACE)
+            return ast.DictLiteral(keys=keys, values=values, line=token.line, column=token.column)
 
         if self.match(TokenType.FN):
             self.expect(TokenType.LPAREN)

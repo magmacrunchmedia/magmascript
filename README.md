@@ -87,6 +87,21 @@ while x > 0 {
     x = x - 1
 }
 
+// Dict literals
+scores = {"Pong": 12, "Tetris": 45}
+print(scores["Tetris"])
+
+// List comprehensions
+numbers = [1, 2, 3, 4, 5]
+evens = [x for x in numbers if x % 2 == 0]
+doubled = [x * 2 for x in numbers]
+
+// String methods
+csv = "apple,banana,cherry"
+fruits = csv.split(",")
+upper = [f.upper() for f in fruits]
+print("-".join(upper))
+
 // Domain calls work directly
 boards = mcp.scoreboards()
 for board in boards {
@@ -99,12 +114,27 @@ for board in boards {
 | Function | Description |
 |----------|-------------|
 | `print(...)` | Print to stdout |
-| `len(x)` | Length of string or list |
+| `len(x)` | Length of string, list, or dict |
 | `type(x)` | Type name as string |
 | `range(n)` | List of integers 0..n-1 |
 | `str(x)`, `int(x)`, `float(x)` | Type conversions |
 | `abs(x)`, `min(...)`, `max(...)`, `sum(...)` | Math utilities |
 | `keys(d)`, `values(d)` | Dict operations |
+
+### String Methods
+
+| Method | Description |
+|--------|-------------|
+| `s.split(sep)` | Split string by separator |
+| `s.join(list)` | Join list with string separator |
+| `s.upper()` | Convert to uppercase |
+| `s.lower()` | Convert to lowercase |
+| `s.contains(sub)` | Check if substring exists |
+| `s.replace(old, new)` | Replace substring |
+| `s.length()` | Get string length |
+| `s.startswith(prefix)` | Check if starts with prefix |
+| `s.endswith(suffix)` | Check if ends with suffix |
+| `s.strip()` | Remove leading/trailing whitespace |
 
 ### Example Scripts
 

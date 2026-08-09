@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-09
+
+### Added
+- Dict literals: `{"name": "Jake", "age": 30}`
+- List comprehensions: `[x * 2 for x in items]` with optional filter `[x for x in items if x > 5]`
+- String methods: `.split()`, `.join()`, `.upper()`, `.lower()`, `.contains()`, `.replace()`, `.length()`, `.startswith()`, `.endswith()`, `.strip()`
+- Method chaining on strings: `"  Hello World  ".strip().lower()`
+- `keys()` and `values()` now work on dict literals
+- 37 new tests for dict literals, list comprehensions, and string methods (258 total)
+
 ## [1.2.0] - 2026-08-09
 
 ### Added
