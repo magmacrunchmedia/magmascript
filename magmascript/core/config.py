@@ -67,6 +67,13 @@ class DiscordConfig:
 
 
 @dataclass
+class ProjectConfig:
+    """Project root configuration."""
+
+    root: str = ""
+
+
+@dataclass
 class Config:
     """Top-level magmascript configuration."""
 
@@ -76,6 +83,7 @@ class Config:
     media: MediaConfig = field(default_factory=MediaConfig)
     cache: CacheConfig = field(default_factory=CacheConfig)
     discord: DiscordConfig = field(default_factory=DiscordConfig)
+    project: ProjectConfig = field(default_factory=ProjectConfig)
 
 
 def _load_toml(path: Path) -> dict:
@@ -108,6 +116,7 @@ def load_config(*, config_path: Path | None = None, env_prefix: str = "MAGMA_") 
     media_section = toml.get("media", {})
     cache_section = toml.get("cache", {})
     discord_section = toml.get("discord", {})
+    project_section = toml.get("project", {})
 
     return Config(
         mcp=MCPConfig(
@@ -143,6 +152,11 @@ def load_config(*, config_path: Path | None = None, env_prefix: str = "MAGMA_") 
             webhook_url=os.environ.get(f"{env_prefix}DISCORD_WEBHOOK_URL")
             or os.environ.get("DISCORD_WEBHOOK_URL", "")
             or discord_section.get("webhook_url", ""),
+        ),
+        project=ProjectConfig(
+            root=os.environ.get(f"{env_prefix}PROJECT_ROOT")
+            or os.environ.get("MAGMACRUNCH_ROOT", "")
+            or project_section.get("root", ""),
         ),
     )
 
