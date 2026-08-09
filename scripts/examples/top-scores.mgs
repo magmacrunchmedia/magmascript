@@ -1,0 +1,29 @@
+// top-scores.mgs — Top scores example using domain bridge
+
+// Fetch all scoreboards
+// boards = mcp.scoreboards()
+
+// Print games with more than 5 entries
+// for board in boards {
+//     if board.entries > 5 {
+//         print(f"{board.game}: {board.entries} entries, top score: {board.top.score}")
+//     }
+// }
+
+// Search for artists
+// artists = mcp.search("aphex twin")
+// for artist in artists {
+//     print(f"Found: {artist.name} ({artist.type})")
+// }
+
+// For now, show a simple example
+print("Top Scores Example")
+print("==================")
+
+// Simulated data
+games = ["Pong", "Tetris", "Pac-Man", "Space Invaders", "Donkey Kong"]
+scores = [12, 45, 8, 23, 15]
+
+for i in range(len(games)) {
+    print(f"{games[i]}: {scores[i]} entries")
+}

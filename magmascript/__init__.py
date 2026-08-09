@@ -18,6 +18,9 @@ from magmascript.domains.gh import GHClient
 from magmascript.domains.media import MediaClient
 from magmascript.domains.rights import RightsClient
 
+# Language module
+from magmascript import lang  # noqa: F401
+
 __all__ = [
     "__version__",
     "CommandRunner",
@@ -38,6 +41,7 @@ __all__ = [
     "format_table",
     "get_config",
     "get_domain",
+    "lang",
     "list_domains",
     "load_config",
     "register_domain",

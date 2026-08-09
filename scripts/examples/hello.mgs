@@ -1,0 +1,16 @@
+// hello.mgs — Hello World example
+
+print("Hello, MagmaScript!")
+
+// Variables
+name = "World"
+greeting = "Hello, {name}!"
+print(greeting)
+
+// Functions
+double = fn(x) { x * 2 }
+print(double(21))
+
+// Arrow functions
+triple = x -> x * 3
+print(triple(7))
