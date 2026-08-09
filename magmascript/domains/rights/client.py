@@ -237,9 +237,17 @@ class RightsClient:
         except Exception as e:
             raise _wrap_mcp_error(e, tool)
 
-    def search(self, query: str) -> list[RightsMatch]:
-        """Search by title, ISRC, ISWC, or ASCAP ID."""
-        text = self._call("search_rights", {"query": query})
+    def search(self, query: str, *, artist: str = "") -> list[RightsMatch]:
+        """Search by title, ISRC, ISWC, or ASCAP ID.
+
+        Args:
+            query: Search string (title, ISRC, ISWC, or ASCAP ID)
+            artist: Optional artist name to filter results
+        """
+        args = {"query": query}
+        if artist:
+            args["artist"] = artist
+        text = self._call("search_rights", args)
         return _parse_search_results(text)
 
     def isrc(self, code: str) -> RecordingRights | None:
@@ -286,7 +294,7 @@ class RightsClient:
 
     def catalog(self, artist: str) -> RightsCatalog:
         """Get full rights catalog for an artist by name or UUID."""
-        text = self._call("artist_rights_catalog", {"artist_uuid": artist})
+        text = self._call("artist_rights_catalog", {"artist": artist})
         return _parse_catalog(text)
 
     def export(self, *, use_cache: bool = True) -> list[RightsExportRow]:
