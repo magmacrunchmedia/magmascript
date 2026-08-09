@@ -46,6 +46,7 @@ Domains:
     archive     Archive page operations
     mb          MusicBrainz API client
     lastfm      Last.fm API client
+    search      Site search index builder
     cache       Cache management (stats, clear)
 
 MCP Actions:
@@ -140,6 +141,10 @@ Last.fm:
     fetch                       Fetch play counts for all artists
     fetch --dry-run             Preview fetch without writing files
     fetch --skip-existing       Skip already-cached artists
+
+Search:
+    build-index                 Build search index (search-index.json)
+    preview [limit]             Preview search index entries
 
 Cache:
     stats                       Show cache statistics
@@ -259,11 +264,19 @@ def main():
                 if client:
                     client.close()
 
+        elif domain == "search":
+            from magmascript.domains.search import SearchClient
+            client = SearchClient()
+            try:
+                _dispatch_search(action, rest, client, fmt)
+            finally:
+                pass  # SearchClient doesn't have a close method
+
         elif domain == "cache":
             _dispatch_cache(action, rest, fmt)
 
         else:
-            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, archive, mb, lastfm, cache", file=sys.stderr)
+            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, archive, mb, lastfm, search, cache", file=sys.stderr)
             sys.exit(1)
 
     except KeyboardInterrupt:
@@ -1060,6 +1073,48 @@ Usage:
     else:
         print(f"Unknown lastfm action: {action!r}", file=sys.stderr)
         print("Run 'magmascript lastfm --help' for available actions.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _dispatch_search(action: str, args: list[str], client, fmt: str):
+    """Dispatch Search subcommands."""
+    if not action or action == "--help":
+        print("""Site search index builder.
+
+Usage:
+    magmascript search build-index       Build search index (search-index.json)
+    magmascript search preview [limit]   Preview search index entries
+""")
+        sys.exit(0)
+
+    if action == "build-index":
+        result = client.build()
+        if fmt == "json":
+            print(json.dumps({
+                "total_entries": result.total_entries,
+                "deduplicated": result.deduplicated,
+                "output_file": result.output_file,
+            }, indent=2))
+        else:
+            print(f"Built search index: {result.deduplicated} entries ({result.total_entries} total) → {result.output_file}")
+
+    elif action == "preview":
+        limit = int(args[0]) if args else 10
+        entries = client.preview(limit=limit)
+        if fmt == "json":
+            print(json.dumps([{"t": e.t, "c": e.c, "u": e.u, "d": e.d} for e in entries], indent=2))
+        else:
+            print(f"Preview ({len(entries)} entries):\n")
+            for e in entries:
+                print(f"  [{e.c}] {e.t}")
+                print(f"    {e.u}")
+                if e.d:
+                    print(f"    {e.d}")
+                print()
+
+    else:
+        print(f"Unknown search action: {action!r}", file=sys.stderr)
+        print("Run 'magmascript search --help' for available actions.", file=sys.stderr)
         sys.exit(1)
 
 
