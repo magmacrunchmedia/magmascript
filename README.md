@@ -38,13 +38,16 @@ repo = "magmacrunch.com"
 
 ## Usage
 
-### MCP Domain — MusicBrainz, scores, Discogs
+### MCP Domain — MusicBrainz, scores, Discogs, write operations
 ```bash
 magmascript mcp scoreboards                  # game leaderboards
 magmascript mcp scores tetris                # tetris scores
 magmascript mcp search "radiohead"           # search MusicBrainz
 magmascript mcp entities                     # all cached entities
 magmascript mcp games                        # arcade games
+magmascript mcp jukebox save songs.json --deploy  # save jukebox + commit
+magmascript mcp tv save channels.json --deploy    # save TV + commit
+magmascript mcp themes save themes.json --deploy  # save themes + commit
 ```
 
 ### Pi Domain — Direct SSH to Raspberry Pi
@@ -54,6 +57,7 @@ magmascript pi logs arcade-chat              # service logs
 magmascript pi restart arcade-chat           # restart service
 magmascript pi info                          # uptime, memory, temp
 magmascript pi deploy arcade/chat-server.py  # deploy files
+magmascript pi backup musicbrainz            # backup + commit to GitHub
 ```
 
 ### GitHub Domain — Direct API access
@@ -62,6 +66,15 @@ magmascript gh workflows                     # all workflow statuses
 magmascript gh trigger "Deploy to Pi"        # trigger workflow
 magmascript gh issues                        # list issues
 magmascript gh file path/to/file.txt         # read file
+magmascript gh sync                          # diff + commit all data files
+```
+
+### Scores Domain — Game high scores
+```bash
+magmascript scores list                      # all game leaderboards
+magmascript scores get tetris                # tetris scores
+magmascript scores reset tetris              # reset one game (backup created)
+magmascript scores reset-all                 # reset all games
 ```
 
 ### Rights Domain — Music rights metadata (ISRC, ISWC, ASCAP)
