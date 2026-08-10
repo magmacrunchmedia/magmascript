@@ -1,0 +1,45 @@
+// pi-health.mgs — Pi system health check
+//
+// Usage:
+//   magmascript run pi-health.mgs
+
+print("Pi Health Check — magmacrunch-server")
+print("=====================================")
+print("")
+
+// System info
+print("System:")
+info = pi.info()
+print(f"  Uptime: {info.uptime}")
+print(f"  Memory: {info.memory}")
+print(f"  CPU Temp: {info.cpu_temp}")
+print(f"  Load: {info.cpu_load}")
+print("")
+
+// Service status
+print("Services:")
+services = pi.services()
+
+healthy = 0
+unhealthy = 0
+
+for s in services {
+    if s.ok {
+        print(f"  ✅ {s.name} — {s.status}")
+        healthy = healthy + 1
+    } else {
+        print(f"  ❌ {s.name} — {s.status}")
+        unhealthy = unhealthy + 1
+    }
+}
+
+print("")
+print(f"Total: {len(services)} | Healthy: {healthy} | Unhealthy: {unhealthy}")
+
+if unhealthy > 0 {
+    print("")
+    print("⚠️  Some services need attention!")
+} else {
+    print("")
+    print("✅ All services healthy.")
+}

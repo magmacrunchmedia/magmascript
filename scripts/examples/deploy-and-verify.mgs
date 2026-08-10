@@ -1,0 +1,60 @@
+// deploy-and-verify.mgs — Deploy to Pi with service verification
+//
+// Usage:
+//   magmascript run deploy-and-verify.mgs <local-path> <service-name>
+//
+// Examples:
+//   magmascript run deploy-and-verify.mgs ./arcade/tetris arcade-tetris
+//   magmascript run deploy-and-verify.mgs ./arcade/chat arcade-chat
+
+script_args = args()
+
+if len(script_args) < 2 {
+    print("Usage: deploy-and-verify.mgs <local-path> <service-name>")
+    print("")
+    print("Examples:")
+    print("  magmascript run deploy-and-verify.mgs ./arcade/tetris arcade-tetris")
+    print("  magmascript run deploy-and-verify.mgs ./arcade/chat arcade-chat")
+    return
+}
+
+path = script_args[0]
+service = script_args[1]
+
+print(f"Deploying to Pi...")
+print(f"  Source: {path}")
+print(f"  Target: magmacrunch-server:/home/jake/arcade/")
+print("")
+
+// Deploy
+result = pi.deploy(path, service)
+print(result)
+print("")
+
+// Verify service status
+print("Verifying service...")
+services = pi.status()
+
+found = false
+for s in services {
+    if s.name == service {
+        found = true
+        if s.ok {
+            print(f"  Service: {service}")
+            print(f"  Status: {s.status} ✅")
+            print("")
+            print("Done. Service deployed and running.")
+        } else {
+            print(f"  Service: {service}")
+            print(f"  Status: {s.status} ❌")
+            print("")
+            print("⚠️  Deploy succeeded but service is not healthy.")
+            print("Check logs: pi logs " + service)
+        }
+    }
+}
+
+if found == false {
+    print(f"  ⚠️  Service '{service}' not found in status list.")
+    print("  It may have a different name or need manual verification.")
+}

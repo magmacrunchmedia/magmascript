@@ -1,0 +1,68 @@
+// artist-rights.mgs — Artist rights catalog lookup
+//
+// Usage:
+//   magmascript run artist-rights.mgs "Artist Name"
+//
+// Example:
+//   magmascript run artist-rights.mgs "C.P. Rutledge"
+//   magmascript run artist-rights.mgs "Jon McCoy"
+
+script_args = args()
+
+if len(script_args) == 0 {
+    print("Usage: artist-rights.mgs <artist-name>")
+    print("")
+    print("Examples:")
+    print("  magmascript run artist-rights.mgs \"C.P. Rutledge\"")
+    print("  magmascript run artist-rights.mgs \"Jon McCoy\"")
+    return
+}
+
+artist = script_args[0]
+
+print(f"Rights Catalog — {artist}")
+print("=" * (16 + artist.length()))
+print("")
+
+// Get full rights catalog
+catalog = rights.catalog(artist)
+
+// Recordings
+print(f"Recordings ({len(catalog.recordings)}):")
+print("")
+
+for rec in catalog.recordings {
+    print(f"  {rec.title}")
+    if len(rec.isrcs) > 0 {
+        print(f"    ISRC: {rec.isrcs[0]}")
+    }
+    if len(rec.releases) > 0 {
+        print(f"    Releases: {rec.releases[0]}")
+    }
+    print("")
+}
+
+// Works
+if len(catalog.works) > 0 {
+    print(f"Works ({len(catalog.works)}):")
+    print("")
+
+    for work in catalog.works {
+        print(f"  {work.title}")
+        if len(work.composers) > 0 {
+            print(f"    Composers: {work.composers[0]}")
+        }
+        if len(work.iswcs) > 0 {
+            print(f"    ISWC: {work.iswcs[0]}")
+        }
+        if len(work.ascap_ids) > 0 {
+            print(f"    ASCAP: {work.ascap_ids[0]}")
+        }
+        print("")
+    }
+} else {
+    print("No works found.")
+    print("")
+}
+
+print("Done!")

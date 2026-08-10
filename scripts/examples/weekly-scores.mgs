@@ -1,0 +1,50 @@
+// weekly-scores.mgs — Weekly arcade scores report
+//
+// Usage:
+//   magmascript run weekly-scores.mgs
+
+print("Weekly Scores Report — MagmaCrunch Arcade")
+print("==========================================")
+print("")
+
+boards = mcp.scoreboards()
+
+total_games = 0
+total_entries = 0
+
+for b in boards {
+    total_games = total_games + 1
+    total_entries = total_entries + b.entries
+
+    print(f"## {b.game}")
+    print("")
+
+    if b.top != none {
+        print(f"**Top Score:** {b.top.initials} — {b.top.score}")
+        if b.top.level != none {
+            print(f" (Level {b.top.level})")
+        }
+        print("")
+    }
+
+    scores = mcp.scores(b.game_id, 5)
+
+    print("| Rank | Initials | Score | Level |")
+    print("|------|----------|-------|-------|")
+
+    rank = 1
+    for s in scores {
+        level = ""
+        if s.level != none {
+            level = str(s.level)
+        }
+        print(f"| {rank} | {s.initials} | {s.score} | {level} |")
+        rank = rank + 1
+    }
+
+    print("")
+    print("---")
+    print("")
+}
+
+print(f"**Summary:** {total_games} games, {total_entries} total scores")

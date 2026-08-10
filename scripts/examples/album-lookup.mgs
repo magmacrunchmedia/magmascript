@@ -1,0 +1,86 @@
+// album-lookup.mgs — Comprehensive album research
+//
+// Usage:
+//   magmascript run album-lookup.mgs "album name" "artist name"
+//
+// Example:
+//   magmascript run album-lookup.mgs "Starting Again" "C.P. Rutledge"
+
+script_args = args()
+
+if len(script_args) < 2 {
+    print("Usage: album-lookup.mgs <album-name> <artist-name>")
+    print("")
+    print("Examples:")
+    print("  magmascript run album-lookup.mgs \"Starting Again\" \"C.P. Rutledge\"")
+    print("  magmascript run album-lookup.mgs \"Much Better Than Carl Spatski\" \"Juanito Thompson\"")
+    return
+}
+
+album = script_args[0]
+artist = script_args[1]
+
+print(f"Album Lookup — {album} by {artist}")
+print("=" * (14 + album.length() + artist.length()))
+print("")
+
+// 1. Search MusicBrainz
+print("Searching MusicBrainz...")
+releases = mcp.mb_search_releases(f"{album} {artist}")
+
+if len(releases) == 0 {
+    print("No releases found on MusicBrainz.")
+    return
+}
+
+release = releases[0]
+print(f"Found: {release.title} ({release.date})")
+print(f"Tracks: {release.track_count}")
+print("")
+
+// 2. Get release details
+print("Fetching track details...")
+detail = mcp.mb_get_release(release.id)
+
+// 3. For each track, get ISRC/ISWC
+print("")
+print("Track Details:")
+print("")
+
+for track in detail.tracks {
+    print(f"  {track.number}. {track.title} ({track.duration})")
+
+    if track.recording_id != "" {
+        recording = mcp.mb_get_recording(track.recording_id)
+
+        if len(recording.isrcs) > 0 {
+            print(f"     ISRC: {recording.isrcs[0]}")
+        } else {
+            print("     ISRC: (not in MusicBrainz)")
+        }
+
+        if len(recording.iswcs) > 0 {
+            print(f"     ISWC: {recording.iswcs[0]}")
+        } else {
+            print("     ISWC: (not in MusicBrainz)")
+        }
+    }
+
+    print("")
+}
+
+// 4. Try rights lookup
+print("Checking rights catalog...")
+rights_matches = rights.search(album)
+
+if len(rights_matches) > 0 {
+    print(f"Found {len(rights_matches)} rights match(es):")
+    for match in rights_matches {
+        print(f"  [{match.kind}] {match.title}")
+    }
+} else {
+    print("No rights matches found.")
+}
+
+print("")
+print("Done!")
