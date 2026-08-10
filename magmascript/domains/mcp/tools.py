@@ -521,7 +521,12 @@ def parse_recording_detail(data: dict) -> RecordingDetail:
     artist_credits = data.get("artist-credit", [])
     artist_name = artist_credits[0].get("name", "") if artist_credits else ""
 
-    isrcs = [isrc.get("id", "") for isrc in data.get("isrcs", [])]
+    isrcs = []
+    for isrc in data.get("isrcs", []):
+        if isinstance(isrc, str):
+            isrcs.append(isrc)
+        elif isinstance(isrc, dict):
+            isrcs.append(isrc.get("id", ""))
 
     iswcs = []
     work_ids = []
@@ -530,7 +535,10 @@ def parse_recording_detail(data: dict) -> RecordingDetail:
         if work:
             work_ids.append(work.get("id", ""))
             for iswc in work.get("iswcs", []):
-                iswcs.append(iswc)
+                if isinstance(iswc, str):
+                    iswcs.append(iswc)
+                elif isinstance(iswc, dict):
+                    iswcs.append(iswc.get("id", ""))
 
     return RecordingDetail(
         title=data.get("title", ""),

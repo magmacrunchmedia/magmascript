@@ -5,8 +5,8 @@
 //
 // Or modify the artist/album variables below and run again.
 
-artist = "C.P. Rutledge"
-album = "Starting Again"
+artist = "Juanito Thompson"
+album = "Much Better Than Carl Spatski"
 
 print(f"Looking up: {album} by {artist}")
 print("")
