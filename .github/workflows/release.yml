@@ -3,6 +3,11 @@ name: Release
 on:
   release:
     types: [released]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to update (e.g. 1.6.0)"
+        required: true
 
 jobs:
   publish:
@@ -27,9 +32,11 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+          skip-existing: true
 
   update-tap:
     needs: publish
+    if: always() && needs.publish.result == 'success' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout tap repo
@@ -51,7 +58,12 @@ jobs:
 
       - name: Get version
         id: version
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          if [ -n "${{ inputs.version }}" ]; then
+            echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Generate updated formula
         run: python magmascript/scripts/update-formula.py ${{ steps.version.outputs.version }} tap/Formula/magmascript.rb
