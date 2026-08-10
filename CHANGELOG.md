@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-08-09
+
+### Added
+- Album ISRC/ISWC lookup via MusicBrainz API (`mb_search_releases`, `mb_get_release`, `mb_get_recording`)
+- `args()` builtin for accessing script arguments from CLI
+- `magmascript configure` subcommand — fetches API key from MCP server and writes to config
+- `top-scores.mgs` — Arcade leaderboards (all games or single game mode)
+- `album-isrcs.mgs` — Album ISRC/ISWC lookup example script
+- Domain bridge now registers archive, mb, lastfm, search domains
+- 278 tests passing
+
+### Fixed
+- Domain bridge now instantiates client classes with config instead of storing classes
+- `len()` now works with `ListWrapper` from domain calls
+- ISRC parser handles both string and dict formats from MusicBrainz API
+- `parse_return()` handles `return` inside blocks without a value
+
 ## [1.3.0] - 2026-08-09
 
 ### Added
