@@ -292,8 +292,11 @@ def main():
             from magmascript.repl import repl
             repl()
 
+        elif domain == "configure":
+            _dispatch_configure(action, rest)
+
         else:
-            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, archive, mb, lastfm, search, cache, run, repl", file=sys.stderr)
+            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, archive, mb, lastfm, search, cache, run, repl, configure", file=sys.stderr)
             sys.exit(1)
 
     except KeyboardInterrupt:
@@ -347,6 +350,68 @@ Options:
             print(e.format(), file=sys.stderr)
         else:
             print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
+def _dispatch_configure(action: str, args: list[str]):
+    """Configure magmascript by fetching API key from MCP server."""
+    if action == "--help" or action == "-h":
+        print("""Usage: magmascript configure [options]
+
+Fetch the API key from the MCP server and write to config file.
+
+Options:
+    --host HOST    SSH host to fetch key from (default: jake@192.168.1.16)
+    --help         Show this help
+""")
+        sys.exit(0)
+
+    host = "jake@192.168.1.16"
+    if "--host" in args:
+        idx = args.index("--host")
+        if idx + 1 < len(args):
+            host = args[idx + 1]
+
+    print(f"Fetching API key from {host}...")
+
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["ssh", host, "cat /home/jake/arcade-config/.env | grep MCP_API_KEY"],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+
+        if result.returncode != 0:
+            print(f"Error: SSH failed: {result.stderr.strip()}", file=sys.stderr)
+            sys.exit(1)
+
+        line = result.stdout.strip()
+        if not line or "=" not in line:
+            print("Error: Could not find MCP_API_KEY in .env", file=sys.stderr)
+            sys.exit(1)
+
+        api_key = line.split("=", 1)[1].strip().strip('"')
+
+        from pathlib import Path
+        config_dir = Path.home() / ".config" / "magmascript"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        config_file = config_dir / "config.toml"
+
+        config_file.write_text(f"""[mcp]
+url = "https://magmacrunch.duckdns.org/mcp"
+api_key = "{api_key}"
+""")
+
+        print(f"Config written to {config_file}")
+        print(f"API key: {api_key[:10]}...")
+
+    except subprocess.TimeoutExpired:
+        print("Error: SSH connection timed out", file=sys.stderr)
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
         sys.exit(1)
 
 
