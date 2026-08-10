@@ -60,3 +60,61 @@ class TestCLI:
 
         captured = capsys.readouterr()
         assert "[]" in captured.out
+
+
+class TestCLIBrandCommands:
+    def test_magma_help(self, capsys):
+        with pytest.raises(SystemExit) as exc_info:
+            with patch("sys.argv", ["magmascript", "magma", "--help"]):
+                main()
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "System status dashboard" in captured.out
+
+    def test_crunch_help(self, capsys):
+        with pytest.raises(SystemExit) as exc_info:
+            with patch("sys.argv", ["magmascript", "crunch", "--help"]):
+                main()
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "pipeline" in captured.out.lower()
+
+    def test_texas_help(self, capsys):
+        with pytest.raises(SystemExit) as exc_info:
+            with patch("sys.argv", ["magmascript", "texas", "--help"]):
+                main()
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "full/heavy" in captured.out.lower()
+
+    def test_toast_help(self, capsys):
+        with pytest.raises(SystemExit) as exc_info:
+            with patch("sys.argv", ["magmascript", "toast", "--help"]):
+                main()
+        assert exc_info.value.code == 0
+        captured = capsys.readouterr()
+        assert "burn/clear" in captured.out.lower()
+
+    def test_crunch_unknown_target(self, capsys):
+        with pytest.raises(SystemExit) as exc_info:
+            with patch("sys.argv", ["magmascript", "crunch", "fake"]):
+                main()
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "Unknown crunch target" in captured.err
+
+    def test_texas_unknown_target(self, capsys):
+        with pytest.raises(SystemExit) as exc_info:
+            with patch("sys.argv", ["magmascript", "texas", "fake"]):
+                main()
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "Unknown texas target" in captured.err
+
+    def test_toast_unknown_target(self, capsys):
+        with pytest.raises(SystemExit) as exc_info:
+            with patch("sys.argv", ["magmascript", "toast", "fake"]):
+                main()
+        assert exc_info.value.code == 1
+        captured = capsys.readouterr()
+        assert "Unknown toast target" in captured.err

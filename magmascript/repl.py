@@ -26,7 +26,13 @@ _BUILTINS = frozenset({
     "print", "echo", "len", "type", "str", "int", "float", "range",
     "keys", "values", "abs", "min", "max", "sum", "args",
 })
-_DOT_COMMANDS = frozenset({".exit", ".help", ".clear", ".ast"})
+_DOT_COMMANDS = frozenset({
+    ".exit", ".help", ".clear", ".ast",
+    ".magma", ".crunch", ".texas", ".toast",
+})
+_CRUNCH_TARGETS = frozenset({"mb", "lastfm", "search", "archive", "scores", "gh", "all"})
+_TEXAS_TARGETS = _CRUNCH_TARGETS
+_TOAST_TARGETS = frozenset({"cache", "mb-cache", "lastfm-cache", "scores-cache", "gh-cache", "search-index", "all"})
 _STRING_METHODS = frozenset({
     "split", "join", "upper", "lower", "contains", "replace",
     "length", "startswith", "endswith", "strip",
@@ -75,6 +81,21 @@ def _repl_enhanced() -> None:
                 for cmd in _DOT_COMMANDS:
                     if cmd.startswith(word):
                         yield Completion(cmd, start_position=-len(word))
+                return
+
+            # Subcommand completion for .crunch, .texas, .toast
+            stripped = text.strip()
+            if stripped.startswith(".crunch ") or stripped.startswith(".texas ") or stripped.startswith(".toast "):
+                prefix_cmd = stripped.split()[0]
+                if prefix_cmd == ".crunch":
+                    targets = _CRUNCH_TARGETS
+                elif prefix_cmd == ".texas":
+                    targets = _TEXAS_TARGETS
+                else:
+                    targets = _TOAST_TARGETS
+                for t in sorted(targets):
+                    if t.startswith(word):
+                        yield Completion(t, start_position=-len(word))
                 return
 
             # Check if we're completing after a dot (method access)
@@ -185,6 +206,22 @@ def _repl_enhanced() -> None:
                     _print_error(e)
                 continue
 
+            if line.strip() == ".magma":
+                _handle_magma()
+                continue
+
+            if line.strip().startswith(".crunch"):
+                _handle_crunch(line.strip())
+                continue
+
+            if line.strip().startswith(".texas"):
+                _handle_texas(line.strip())
+                continue
+
+            if line.strip().startswith(".toast"):
+                _handle_toast(line.strip())
+                continue
+
             buffer.append(line)
             source = "\n".join(buffer) + "\n"
 
@@ -264,6 +301,22 @@ def _repl_basic() -> None:
                     _print_error(e)
                 continue
 
+            if line.strip() == ".magma":
+                _handle_magma()
+                continue
+
+            if line.strip().startswith(".crunch"):
+                _handle_crunch(line.strip())
+                continue
+
+            if line.strip().startswith(".texas"):
+                _handle_texas(line.strip())
+                continue
+
+            if line.strip().startswith(".toast"):
+                _handle_toast(line.strip())
+                continue
+
             buffer.append(line)
             source = "\n".join(buffer) + "\n"
 
@@ -302,12 +355,121 @@ def _repl_basic() -> None:
             break
 
 
+def _handle_magma() -> None:
+    from magmascript.core.commands import magma
+    try:
+        status = magma()
+        print(f"\nMagmaScript v{status.version}\n")
+        print("Domains:")
+        for name, state in status.domains.items():
+            print(f"  {name:<12} {state}")
+        print()
+        cache = status.cache
+        size = cache.get("total_size_bytes", 0)
+        if size < 1024:
+            size_str = f"{size} B"
+        elif size < 1024 * 1024:
+            size_str = f"{size / 1024:.1f} KB"
+        else:
+            size_str = f"{size / (1024 * 1024):.1f} MB"
+        print(f"Cache: {cache['total_files']} files, {size_str}")
+        for dname, dinfo in cache.get("domains", {}).items():
+            if isinstance(dinfo, dict):
+                print(f"  {dname}: {dinfo.get('files', 0)} files")
+        print()
+    except Exception as e:
+        print(f"Error: {e}")
+
+
+def _handle_crunch(line: str) -> None:
+    from magmascript.core.commands import crunch
+    parts = line.split()
+    target = parts[1] if len(parts) > 1 else ""
+    dry_run = "--dry-run" in parts
+
+    if not target:
+        print("Usage: .crunch <target> [--dry-run]")
+        print("Targets: mb, lastfm, search, archive, scores, gh, all")
+        return
+
+    try:
+        result = crunch(target, dry_run=dry_run)
+        _print_crunch_result(result)
+    except Exception as e:
+        print(f"Error: {e}")
+
+
+def _handle_texas(line: str) -> None:
+    from magmascript.core.commands import texas
+    parts = line.split()
+    target = parts[1] if len(parts) > 1 else ""
+    dry_run = "--dry-run" in parts
+
+    if not target:
+        print("Usage: .texas <target> [--dry-run]")
+        print("Targets: mb, lastfm, search, archive, scores, gh, all")
+        return
+
+    try:
+        result = texas(target, dry_run=dry_run)
+        _print_crunch_result(result)
+    except Exception as e:
+        print(f"Error: {e}")
+
+
+def _handle_toast(line: str) -> None:
+    from magmascript.core.commands import toast
+    parts = line.split()
+    target = parts[1] if len(parts) > 1 else ""
+    domain = None
+    if "--domain" in parts:
+        idx = parts.index("--domain")
+        if idx + 1 < len(parts):
+            domain = parts[idx + 1]
+
+    if not target:
+        print("Usage: .toast <target> [--domain <name>]")
+        print("Targets: cache, mb-cache, lastfm-cache, scores-cache, gh-cache, search-index, all")
+        return
+
+    try:
+        result = toast(target, domain=domain)
+        if result.message:
+            print(result.message)
+    except Exception as e:
+        print(f"Error: {e}")
+
+
+def _print_crunch_result(result) -> None:
+    if result.completed:
+        print(f"\n{result.target}: {result.completed} completed")
+    if result.skipped:
+        print(f"  {result.skipped} skipped")
+    if result.elapsed_seconds:
+        print(f"  {result.elapsed_seconds:.1f}s")
+    if result.details:
+        if isinstance(result.details, dict):
+            for k, v in result.details.items():
+                print(f"  {k}: {v}")
+        else:
+            print(f"  {result.details}")
+    if result.errors:
+        print(f"\nErrors ({len(result.errors)}):")
+        for err in result.errors:
+            print(f"  {err}")
+    print()
+
+
 def _print_help() -> None:
     print("Commands:")
     print("  .exit    - Quit the REPL")
     print("  .help    - Show this help")
     print("  .clear   - Clear variables")
     print("  .ast     - Show AST for next input")
+    print("  .magma   - Show system status dashboard")
+    print("  .crunch  - Run a pipeline (mb, lastfm, search, archive, scores, gh, all)")
+    print("  .texas   - Full/heavy operation (same targets, no shortcuts)")
+    print("  .toast   - Burn/clear caches (cache, mb-cache, all, etc.)")
     print()
     print("Language:")
     print("  Variables:  x = 42")
