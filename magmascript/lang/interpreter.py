@@ -155,17 +155,19 @@ def _get_thread_interpreter() -> Interpreter:
 
 
 class Interpreter:
-    def __init__(self, source: str | None = None, filename: str | None = None) -> None:
+    def __init__(self, source: str | None = None, filename: str | None = None, script_args: list[str] | None = None) -> None:
         self.globals = Environment()
         self.source = source
         self.filename = filename
         self._call_stack: list[str] = []
+        self._script_args = script_args or []
         self._setup_builtins()
         self._setup_domains()
 
     def _setup_builtins(self) -> None:
         for name, func in BUILTINS.items():
             self.globals.define(name, func)
+        self.globals.define("args", lambda: self._script_args)
 
     def _setup_domains(self) -> None:
         proxies = create_domain_proxies()
@@ -530,10 +532,10 @@ class Interpreter:
         return True
 
 
-def run(source: str) -> Any:
+def run(source: str, script_args: list[str] | None = None) -> Any:
     from magmascript.lang.parser import parse
     program = parse(source)
-    interpreter = Interpreter(source=source)
+    interpreter = Interpreter(source=source, script_args=script_args)
     global _thread_interpreter
     _thread_interpreter = interpreter
     return interpreter.run(program)
