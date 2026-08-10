@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-08-09
+
+### Added
+- Brand commands: `magma`, `crunch`, `texas`, `toast` — available as both CLI subcommands and REPL dot-commands
+- `magma` — system status dashboard (domains, cache stats, version)
+- `crunch <target>` — batch pipeline runner (mb, lastfm, search, archive, scores, gh, all)
+- `texas <target>` — full/heavy operation (same targets, no shortcuts, force refresh)
+- `toast <target>` — burn/clear caches (cache, mb-cache, lastfm-cache, scores-cache, gh-cache, search-index, all)
+- `--dry-run` flag support for crunch and texas commands
+- 28 new tests for commands and CLI dispatch (306 total)
+
+### Changed
+- REPL now includes `.magma`, `.crunch`, `.texas`, `.toast` dot-commands with tab completion
+- CLI usage updated with new brand commands
+
 ## [1.5.0] - 2026-08-09
 
 ### Added

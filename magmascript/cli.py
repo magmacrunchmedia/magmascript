@@ -50,6 +50,10 @@ Domains:
     cache       Cache management (stats, clear)
     run         Run a MagmaScript (.mgs) file
     repl        Start interactive MagmaScript REPL
+    magma       Show system status dashboard
+    crunch      Run a batch pipeline (mb, lastfm, search, archive, scores, gh, all)
+    texas       Full/heavy operation (same targets, no shortcuts)
+    toast       Burn/clear caches (cache, mb-cache, lastfm-cache, all, etc.)
 
 MCP Actions:
     search <query>              Search cached MusicBrainz entities
@@ -295,8 +299,20 @@ def main():
         elif domain == "configure":
             _dispatch_configure(action, rest)
 
+        elif domain == "magma":
+            _dispatch_magma(action, fmt)
+
+        elif domain == "crunch":
+            _dispatch_crunch(action, rest, fmt)
+
+        elif domain == "texas":
+            _dispatch_texas(action, rest, fmt)
+
+        elif domain == "toast":
+            _dispatch_toast(action, rest, fmt)
+
         else:
-            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, archive, mb, lastfm, search, cache, run, repl, configure", file=sys.stderr)
+            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, archive, mb, lastfm, search, cache, run, repl, configure, magma, crunch, texas, toast", file=sys.stderr)
             sys.exit(1)
 
     except KeyboardInterrupt:
@@ -1442,6 +1458,192 @@ Usage:
     else:
         print(f"Unknown cache action: {action!r}", file=sys.stderr)
         sys.exit(1)
+
+
+def _dispatch_magma(action: str, fmt: str):
+    """Dispatch magma subcommands — system status dashboard."""
+    from magmascript.core.commands import magma
+
+    if not action or action == "--help":
+        print("""System status dashboard.
+
+Usage:
+    magmascript magma              Show system status
+""")
+        sys.exit(0)
+
+    status = magma()
+
+    if fmt == "json":
+        print(json.dumps({
+            "version": status.version,
+            "domains": status.domains,
+            "cache": status.cache,
+            "last_crunch": status.last_crunch,
+        }, indent=2))
+    else:
+        print(f"\nMagmaScript v{status.version}\n")
+        print("Domains:")
+        for name, state in status.domains.items():
+            print(f"  {name:<12} {state}")
+        print()
+        cache = status.cache
+        print(f"Cache: {cache['total_files']} files, {_format_size(cache['total_size_bytes'])}")
+        for dname, dinfo in cache.get("domains", {}).items():
+            if isinstance(dinfo, dict):
+                print(f"  {dname}: {dinfo.get('files', 0)} files")
+        print()
+
+
+def _format_size(size_bytes: int) -> str:
+    if size_bytes < 1024:
+        return f"{size_bytes} B"
+    elif size_bytes < 1024 * 1024:
+        return f"{size_bytes / 1024:.1f} KB"
+    else:
+        return f"{size_bytes / (1024 * 1024):.1f} MB"
+
+
+def _dispatch_crunch(action: str, args: list[str], fmt: str):
+    """Dispatch crunch subcommands — pipeline runner."""
+    from magmascript.core.commands import crunch, CrunchResult
+
+    if not action or action == "--help":
+        print("""Run a batch pipeline.
+
+Usage:
+    magmascript crunch <target>          Run pipeline (skip existing, stale only)
+    magmascript crunch <target> --dry-run  Preview without writing
+
+Targets:
+    mb          MusicBrainz backup
+    lastfm      Last.fm play count fetch
+    search      Search index rebuild
+    archive     Bake MB cache into HTML stubs
+    scores      Generate scores report
+    gh          Diff + commit local vs GitHub
+    all         Run all pipelines sequentially
+""")
+        sys.exit(0)
+
+    dry_run = "--dry-run" in args
+
+    try:
+        result = crunch(action, dry_run=dry_run)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    _print_crunch_result(result, fmt)
+
+
+def _dispatch_texas(action: str, args: list[str], fmt: str):
+    """Dispatch texas subcommands — full/heavy operations."""
+    from magmascript.core.commands import texas
+
+    if not action or action == "--help":
+        print("""Full/heavy operation (no shortcuts).
+
+Usage:
+    magmascript texas <target>          Run full operation
+    magmascript texas <target> --dry-run  Preview without writing
+
+Targets:
+    mb          Full MB backup (no skip-existing, no stale-only)
+    lastfm      Full Last.fm fetch (no skip-existing)
+    search      Search index rebuild + archive bake
+    archive     Full pipeline: stubs -> bake -> format check
+    scores      Full report (post to Discussion + Discord)
+    gh          Full sync with custom message
+    all         Everything, no shortcuts
+""")
+        sys.exit(0)
+
+    dry_run = "--dry-run" in args
+
+    try:
+        result = texas(action, dry_run=dry_run)
+    except ValueError as e:
+        print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    _print_crunch_result(result, fmt)
+
+
+def _dispatch_toast(action: str, args: list[str], fmt: str):
+    """Dispatch toast subcommands — burn/clear caches."""
+    from magmascript.core.commands import toast
+
+    if not action or action == "--help":
+        print("""Burn/clear caches.
+
+Usage:
+    magmascript toast <target>              Clear specified cache
+    magmascript toast cache --domain <name>  Clear specific domain cache
+
+Targets:
+    cache           Clear all CacheStore data
+    cache --domain X  Clear specific domain (scores, gh, media, etc.)
+    mb-cache        Clear MusicBrainz on-disk cache
+    lastfm-cache    Clear Last.fm cache
+    scores-cache    Clear scores cache
+    gh-cache        Clear GitHub cache
+    search-index    Remove search-index.json
+    all             Clear everything
+""")
+        sys.exit(0)
+
+    domain = None
+    if "--domain" in args:
+        idx = args.index("--domain")
+        if idx + 1 < len(args):
+            domain = args[idx + 1]
+        else:
+            print("Usage: toast cache --domain <name>", file=sys.stderr)
+            sys.exit(1)
+
+    result = toast(action, domain=domain)
+
+    if fmt == "json":
+        print(json.dumps({
+            "target": result.target,
+            "files_cleared": result.files_cleared,
+            "message": result.message,
+        }, indent=2))
+    else:
+        print(result.message)
+
+
+def _print_crunch_result(result, fmt: str):
+    """Print a crunch/texas result."""
+    if fmt == "json":
+        print(json.dumps({
+            "target": result.target,
+            "completed": result.completed,
+            "skipped": result.skipped,
+            "errors": result.errors,
+            "elapsed_seconds": result.elapsed_seconds,
+            "details": result.details,
+        }, indent=2))
+    else:
+        label = result.target
+        if result.completed:
+            print(f"\n{label}: {result.completed} completed")
+        if result.skipped:
+            print(f"  {result.skipped} skipped")
+        if result.elapsed_seconds:
+            print(f"  {result.elapsed_seconds:.1f}s")
+        if result.details:
+            if isinstance(result.details, dict):
+                for k, v in result.details.items():
+                    print(f"  {k}: {v}")
+            else:
+                print(f"  {result.details}")
+        if result.errors:
+            print(f"\nErrors ({len(result.errors)}):")
+            for err in result.errors:
+                print(f"  {err}")
+        print()
 
 
 if __name__ == "__main__":
