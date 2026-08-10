@@ -1184,9 +1184,9 @@ class TestParseErrorFormatting:
 
     def test_error_includes_token_value(self):
         with pytest.raises(ParseError) as exc_info:
-            tokens = Lexer("fn f() { return }").tokenize()
+            tokens = Lexer("(1 + 2 }").tokenize()
             Parser(tokens).parse()
-        assert "'}'" in str(exc_info.value.message)
+        assert "')'" in str(exc_info.value.message)
 
 
 class TestRuntimeErrorFormatting:

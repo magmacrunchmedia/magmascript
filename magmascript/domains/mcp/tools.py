@@ -154,6 +154,55 @@ class PlayCount:
 
 
 # ---------------------------------------------------------------------------
+# MusicBrainz Album Lookup
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class ReleaseSearchResult:
+    """A release search result from MusicBrainz."""
+
+    title: str
+    id: str
+    artist: str
+    date: str
+    track_count: int
+
+
+@dataclass
+class ReleaseTrack:
+    """A single track on a release."""
+
+    number: int
+    title: str
+    duration: str
+    recording_id: str
+
+
+@dataclass
+class ReleaseDetail:
+    """Full release details with track list."""
+
+    title: str
+    id: str
+    artist: str
+    date: str
+    tracks: list[ReleaseTrack] = field(default_factory=list)
+
+
+@dataclass
+class RecordingDetail:
+    """Recording details with ISRCs and work relationships."""
+
+    title: str
+    id: str
+    artist: str
+    isrcs: list[str] = field(default_factory=list)
+    iswcs: list[str] = field(default_factory=list)
+    work_ids: list[str] = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
 # Parsers — convert raw JSON/text into typed objects
 # ---------------------------------------------------------------------------
 
@@ -409,3 +458,85 @@ def parse_play_counts(text: str) -> list[PlayCount]:
         top_track = parts[3] if parts[3] else None
         results.append(PlayCount(name=name, listeners=listeners, playcount=playcount, top_track=top_track))
     return results
+
+
+# ---------------------------------------------------------------------------
+# MusicBrainz Album Lookup Parsers
+# ---------------------------------------------------------------------------
+
+
+def parse_release_search_results(data: dict) -> list[ReleaseSearchResult]:
+    """Parse MusicBrainz search results JSON into ReleaseSearchResults."""
+    results = []
+    releases = data.get("releases", [])
+    for release in releases:
+        artist_credits = release.get("artist-credit", [])
+        artist_name = artist_credits[0].get("name", "") if artist_credits else ""
+        track_count = release.get("track-count", 0)
+        results.append(ReleaseSearchResult(
+            title=release.get("title", ""),
+            id=release.get("id", ""),
+            artist=artist_name,
+            date=release.get("date", ""),
+            track_count=track_count,
+        ))
+    return results
+
+
+def parse_release_detail(data: dict) -> ReleaseDetail:
+    """Parse MusicBrainz release detail JSON into ReleaseDetail."""
+    artist_credits = data.get("artist-credit", [])
+    artist_name = artist_credits[0].get("name", "") if artist_credits else ""
+
+    tracks = []
+    for i, medium in enumerate(data.get("media", []), 1):
+        for j, track in enumerate(medium.get("tracks", []), 1):
+            recording = track.get("recording", {})
+            duration_ms = track.get("length") or recording.get("length")
+            duration = ""
+            if duration_ms:
+                seconds = duration_ms // 1000
+                minutes = seconds // 60
+                seconds = seconds % 60
+                duration = f"{minutes}:{seconds:02d}"
+
+            tracks.append(ReleaseTrack(
+                number=track.get("number", j),
+                title=track.get("title", ""),
+                duration=duration,
+                recording_id=recording.get("id", ""),
+            ))
+
+    return ReleaseDetail(
+        title=data.get("title", ""),
+        id=data.get("id", ""),
+        artist=artist_name,
+        date=data.get("date", ""),
+        tracks=tracks,
+    )
+
+
+def parse_recording_detail(data: dict) -> RecordingDetail:
+    """Parse MusicBrainz recording detail JSON into RecordingDetail."""
+    artist_credits = data.get("artist-credit", [])
+    artist_name = artist_credits[0].get("name", "") if artist_credits else ""
+
+    isrcs = [isrc.get("id", "") for isrc in data.get("isrcs", [])]
+
+    iswcs = []
+    work_ids = []
+    for relation in data.get("relations", []):
+        work = relation.get("work", {})
+        if work:
+            work_ids.append(work.get("id", ""))
+            for iswc in work.get("iswcs", []):
+                iswcs.append(iswc)
+
+    return RecordingDetail(
+        title=data.get("title", ""),
+        id=data.get("id", ""),
+        artist=artist_name,
+        isrcs=isrcs,
+        iswcs=iswcs,
+        work_ids=work_ids,
+    )

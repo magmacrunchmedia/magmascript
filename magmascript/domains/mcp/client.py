@@ -21,6 +21,9 @@ from magmascript.domains.mcp.tools import (
     PiServiceStatus,
     PiSystemInfo,
     PlayCount,
+    RecordingDetail,
+    ReleaseDetail,
+    ReleaseSearchResult,
     ScoreEntry,
     Scoreboard,
     SearchResult,
@@ -28,6 +31,9 @@ from magmascript.domains.mcp.tools import (
     parse_bot_list,
     parse_discogs_results,
     parse_arcade_games,
+    parse_recording_detail,
+    parse_release_detail,
+    parse_release_search_results,
     parse_score_list,
     parse_scoreboard_list,
     parse_search_results,
@@ -247,6 +253,49 @@ class MCPClient:
     def artist_play_counts(self, artist_name: str) -> str:
         """Get detailed Last.fm stats for a specific artist."""
         return self._call("get_artist_play_counts", {"artist_name": artist_name})
+
+    # ------------------------------------------------------------------
+    # MusicBrainz API (direct calls, not via MCP tools)
+    # ------------------------------------------------------------------
+
+    def mb_search_releases(self, query: str, limit: int = 5) -> list[ReleaseSearchResult]:
+        """Search MusicBrainz for releases by query string."""
+        url = "https://musicbrainz.org/ws/2/release/"
+        params = {"query": query, "fmt": "json", "limit": limit}
+        headers = {"User-Agent": "magmascript/1.3.0 (https://github.com/magmacrunchmedia/magmascript)"}
+        try:
+            resp = httpx.get(url, params=params, headers=headers, timeout=10.0)
+            resp.raise_for_status()
+            data = resp.json()
+            return parse_release_search_results(data)
+        except Exception as e:
+            raise _wrap_mcp_error(e, "mb_search_releases")
+
+    def mb_get_release(self, mbid: str) -> ReleaseDetail:
+        """Get full release details including track list with recordings."""
+        url = f"https://musicbrainz.org/ws/2/release/{mbid}"
+        params = {"fmt": "json", "inc": "artist-credits+recordings"}
+        headers = {"User-Agent": "magmascript/1.3.0 (https://github.com/magmacrunchmedia/magmascript)"}
+        try:
+            resp = httpx.get(url, params=params, headers=headers, timeout=10.0)
+            resp.raise_for_status()
+            data = resp.json()
+            return parse_release_detail(data)
+        except Exception as e:
+            raise _wrap_mcp_error(e, "mb_get_release")
+
+    def mb_get_recording(self, mbid: str) -> RecordingDetail:
+        """Get recording details including ISRCs and work relationships."""
+        url = f"https://musicbrainz.org/ws/2/recording/{mbid}"
+        params = {"fmt": "json", "inc": "artist-credits+isrcs+work-rels"}
+        headers = {"User-Agent": "magmascript/1.3.0 (https://github.com/magmacrunchmedia/magmascript)"}
+        try:
+            resp = httpx.get(url, params=params, headers=headers, timeout=10.0)
+            resp.raise_for_status()
+            data = resp.json()
+            return parse_recording_detail(data)
+        except Exception as e:
+            raise _wrap_mcp_error(e, "mb_get_recording")
 
     # ------------------------------------------------------------------
     # Lifecycle
