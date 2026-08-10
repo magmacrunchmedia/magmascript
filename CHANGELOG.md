@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `magmascript configure` subcommand — fetches API key from MCP server and writes to config
 - `top-scores.mgs` — Arcade leaderboards (all games or single game mode)
 - `album-isrcs.mgs` — Album ISRC/ISWC lookup example script
+- `pi-health.mgs` — Pi system health check
+- `pi-traffic-report.mgs` — Nginx traffic analysis
+- `deploy-and-verify.mgs` — Deploy to Pi with service verification
+- `artist-rights.mgs` — Artist rights catalog lookup
+- `album-lookup.mgs` — Album research: MusicBrainz + ISRC/ISWC + rights
+- `weekly-scores.mgs` — Weekly scores report in markdown
+- `full-backup.mgs` — MusicBrainz backup pipeline
+- `maintenance.mgs` — Weekly maintenance pipeline
 - Domain bridge now registers archive, mb, lastfm, search domains
 - 278 tests passing
 

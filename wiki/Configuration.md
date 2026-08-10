@@ -2,11 +2,39 @@
 
 magmascript loads configuration from environment variables and a config file.
 
+## Quick Setup
+
+```bash
+# Auto-configure from MCP server (recommended)
+magmascript configure
+
+# Or manually
+export MAGMA_API_KEY="your-mcp-key"
+export GITHUB_TOKEN=$(gh auth token)
+```
+
 ## Priority
 
 1. Environment variables (highest)
 2. Config file (`~/.config/magmascript/config.toml`)
 3. Defaults (lowest)
+
+## Configure Command
+
+The `configure` command fetches the API key from the MCP server and writes it to your config file:
+
+```bash
+# Fetch from Pi (default)
+magmascript configure
+
+# Fetch from custom host
+magmascript configure --host user@server
+
+# Fetch from localhost (for Pi)
+magmascript configure --host jake@localhost
+```
+
+This is the recommended way to set up magmascript on a new machine.
 
 ## Environment Variables
 

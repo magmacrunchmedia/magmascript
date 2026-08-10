@@ -1,0 +1,28 @@
+// full-backup.mgs — Full MusicBrainz backup
+//
+// Usage:
+//   magmascript run full-backup.mgs [backup-type]
+//
+// Examples:
+//   magmascript run full-backup.mgs              # Default: musicbrainz
+//   magmascript run full-backup.mgs musicbrainz  # MusicBrainz backup
+//   magmascript run full-backup.mgs tmdb         # TMDB backup
+
+script_args = args()
+backup_type = "musicbrainz"
+
+if len(script_args) > 0 {
+    backup_type = script_args[0]
+}
+
+print(f"Full Backup — {backup_type}")
+print("=" * (16 + backup_type.length()))
+print("")
+
+// Run backup on Pi
+print(f"Running {backup_type} backup on Pi...")
+result = pi.run_backup(backup_type, 600)
+print(result)
+print("")
+
+print("Backup complete!")

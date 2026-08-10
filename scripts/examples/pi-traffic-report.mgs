@@ -1,0 +1,32 @@
+// pi-traffic-report.mgs — Nginx traffic analysis
+//
+// Usage:
+//   magmascript run pi-traffic-report.mgs [lines]
+
+script_args = args()
+lines = 50
+
+if len(script_args) > 0 {
+    lines = script_args[0]
+}
+
+print("Nginx Traffic Report — magmacrunch-server")
+print("==========================================")
+print("")
+
+traffic = pi.traffic(lines)
+
+// Parse the traffic data
+print(f"Total Requests: {traffic.total_requests}")
+print("")
+
+print("Top IPs:")
+print(traffic.top_ips)
+print("")
+
+print("Status Codes:")
+print(traffic.status_codes)
+print("")
+
+print("User Agents:")
+print(traffic.user_agents)

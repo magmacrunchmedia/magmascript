@@ -1,0 +1,64 @@
+// maintenance.mgs — Weekly maintenance pipeline
+//
+// Usage:
+//   magmascript run maintenance.mgs
+
+print("Weekly Maintenance — MagmaCrunch")
+print("================================")
+print("")
+
+// Step 1: Pi health check
+print("Step 1: Pi Health Check")
+print("------------------------")
+info = pi.info()
+print(f"  Uptime: {info.uptime}")
+print(f"  Memory: {info.memory}")
+print(f"  CPU Temp: {info.cpu_temp}")
+print(f"  Load: {info.cpu_load}")
+print("")
+
+// Step 2: Check all services
+print("Step 2: Service Status")
+print("----------------------")
+services = pi.status()
+
+healthy = 0
+unhealthy = 0
+
+for s in services {
+    if s.ok {
+        healthy = healthy + 1
+    } else {
+        print(f"  ❌ {s.name} — {s.status}")
+        unhealthy = unhealthy + 1
+    }
+}
+
+print(f"  {healthy}/{len(services)} services healthy")
+print("")
+
+// Step 3: Check GitHub workflows
+print("Step 3: GitHub Workflows")
+print("------------------------")
+workflows = mcp.bots()
+for w in workflows {
+    print(f"  {w.name}: {w.status}")
+}
+print("")
+
+// Step 4: Scores summary
+print("Step 4: Scores Summary")
+print("----------------------")
+boards = mcp.scoreboards()
+for b in boards {
+    if b.top != none {
+        print(f"  {b.game}: {b.entries} entries, top: {b.top.initials} ({b.top.score})")
+    }
+}
+print("")
+
+// Summary
+print("Maintenance complete!")
+if unhealthy > 0 {
+    print(f"⚠️  {unhealthy} service(s) need attention.")
+}
