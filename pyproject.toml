@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "magmascript"
-version = "1.4.0"
+version = "1.5.0"
 description = "Scripting toolkit with domain-first subcommands"
 readme = "README.md"
 license = "MIT"
@@ -31,6 +31,8 @@ dependencies = [
 [project.optional-dependencies]
 cli = [
     "rich>=13.0",
+    "prompt_toolkit>=3.0",
+    "pygments>=2.0",
 ]
 dev = [
     "pytest>=7.0",

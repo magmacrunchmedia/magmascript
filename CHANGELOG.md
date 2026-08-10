@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-08-09
+
+### Added
+- Enhanced REPL with syntax highlighting and tab completion (via prompt_toolkit + Pygments)
+- Pygments lexer for MagmaScript (`*.mgs` files)
+- Tab completion for keywords, builtins, domain names, user-defined variables, domain methods, and string methods
+- Persistent REPL history across sessions (`~/.magmascript_history`)
+- Multiline editing with proper continuation prompts
+- Graceful fallback to readline-based REPL when prompt_toolkit is not installed
+
+### Changed
+- REPL now uses prompt_toolkit for interactive input when available
+- Added `prompt_toolkit>=3.0` and `pygments>=2.0` to `[cli]` optional dependencies
+
 ## [1.4.0] - 2026-08-09
 
 ### Added
