@@ -1,29 +1,69 @@
-// top-scores.mgs — Top scores example using domain bridge
+// top-scores.mgs — MagmaCrunch Arcade leaderboards
+//
+// Usage:
+//   magmascript run top-scores.mgs              # All games overview
+//   magmascript run top-scores.mgs tetris       # Full leaderboard for one game
 
-// Fetch all scoreboards
-// boards = mcp.scoreboards()
+script_args = args()
+game = ""
 
-// Print games with more than 5 entries
-// for board in boards {
-//     if board.entries > 5 {
-//         print(f"{board.game}: {board.entries} entries, top score: {board.top.score}")
-//     }
-// }
+if len(script_args) > 0 {
+    game = script_args[0]
+}
 
-// Search for artists
-// artists = mcp.search("aphex twin")
-// for artist in artists {
-//     print(f"Found: {artist.name} ({artist.type})")
-// }
+if game == "" {
+    // Mode 1: All games overview
+    boards = mcp.scoreboards()
 
-// For now, show a simple example
-print("Top Scores Example")
-print("==================")
+    print("MagmaCrunch Arcade — Leaderboards")
+    print("==================================")
+    print("")
 
-// Simulated data
-games = ["Pong", "Tetris", "Pac-Man", "Space Invaders", "Donkey Kong"]
-scores = [12, 45, 8, 23, 15]
+    for b in boards {
+        if b.top != none {
+            print(f"{b.game}")
+            print(f"  {b.entries} entries | Top: {b.top.initials} with {b.top.score}")
+        } else {
+            print(f"{b.game}")
+            print(f"  {b.entries} entries | No scores yet")
+        }
+        print("")
+    }
+} else {
+    // Mode 2: Single game leaderboard
+    boards = mcp.scoreboards()
+    found = false
 
-for i in range(len(games)) {
-    print(f"{games[i]}: {scores[i]} entries")
+    for b in boards {
+        if b.game.lower() == game.lower() or b.game_id.lower() == game.lower() {
+            found = true
+            scores = mcp.scores(b.game_id, 20)
+
+            print(f"{b.game} — Leaderboard")
+            print("=" * 30)
+            print("")
+
+            i = 1
+            for s in scores {
+                level_str = ""
+                if s.level != none {
+                    level_str = f" (Lv{s.level})"
+                }
+                print(f"  {i}. {s.initials} — {s.score}{level_str}")
+                i = i + 1
+            }
+
+            print("")
+            print(f"Total entries: {b.entries}")
+        }
+    }
+
+    if found == false {
+        print(f"Game not found: {game}")
+        print("")
+        print("Available games:")
+        for b in boards {
+            print(f"  {b.game} ({b.game_id})")
+        }
+    }
 }

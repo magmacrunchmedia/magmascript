@@ -337,7 +337,7 @@ Options:
         filename = str(script_path)
         tokens = Lexer(source, filename=filename).tokenize()
         program = Parser(tokens, source=source, filename=filename).parse()
-        interpreter = Interpreter(source=source, filename=filename)
+        interpreter = Interpreter(source=source, filename=filename, script_args=args)
         interpreter.run(program)
     except KeyboardInterrupt:
         print("\nInterrupted.", file=sys.stderr)
