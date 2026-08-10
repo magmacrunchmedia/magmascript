@@ -1,0 +1,52 @@
+// album-isrcs.mgs — Get ISRCs and ISWCs for every song on an album
+//
+// Usage:
+//   magmascript run scripts/examples/album-isrcs.mgs
+//
+// Or modify the artist/album variables below and run again.
+
+artist = "C.P. Rutledge"
+album = "Starting Again"
+
+print(f"Looking up: {album} by {artist}")
+print("")
+
+// 1. Search for the release
+releases = mcp.mb_search_releases(f"{album} {artist}")
+if len(releases) == 0 {
+    print("No releases found")
+    return
+}
+
+release = releases[0]
+print(f"Found: {release.title} ({release.date})")
+print(f"Tracks: {release.track_count}")
+print("")
+
+// 2. Get full release details
+detail = mcp.mb_get_release(release.id)
+
+// 3. For each track, get ISRC and ISWC
+for track in detail.tracks {
+    print(f"{track.number}. {track.title} ({track.duration})")
+
+    if track.recording_id != "" {
+        recording = mcp.mb_get_recording(track.recording_id)
+
+        if len(recording.isrcs) > 0 {
+            print(f"   ISRC: {recording.isrcs[0]}")
+        } else {
+            print("   ISRC: (not in MusicBrainz)")
+        }
+
+        if len(recording.iswcs) > 0 {
+            print(f"   ISWC: {recording.iswcs[0]}")
+        } else {
+            print("   ISWC: (not in MusicBrainz)")
+        }
+    }
+
+    print("")
+}
+
+print("Done!")

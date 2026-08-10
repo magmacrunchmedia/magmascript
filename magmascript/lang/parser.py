@@ -288,7 +288,7 @@ class Parser:
     def parse_return(self) -> ast.ReturnStatement:
         token = self.expect(TokenType.RETURN)
         value = None
-        if not self.check(TokenType.NEWLINE) and not self.check(TokenType.EOF):
+        if not self.check(TokenType.NEWLINE) and not self.check(TokenType.EOF) and not self.check(TokenType.RBRACE):
             value = self.parse_expression()
         return ast.ReturnStatement(value=value, line=token.line, column=token.column)
 
