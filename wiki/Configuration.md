@@ -42,7 +42,7 @@ This is the recommended way to set up magmascript on a new machine.
 |----------|-------------|---------|
 | `MAGMA_URL` | MCP server URL | `https://magmacrunch.duckdns.org/mcp` |
 | `MAGMA_API_KEY` | MCP API key | — |
-| `MAGMA_PI_HOST` | Pi hostname | `192.168.1.16` |
+| `MAGMA_PI_HOST` | Pi hostname | `your-pi-host` |
 | `MAGMA_PI_USER` | Pi SSH user | `jake` |
 | `MAGMA_GITHUB_TOKEN` | GitHub token | — |
 | `MAGMA_GITHUB_OWNER` | GitHub owner | `magmacrunchmedia` |
@@ -61,7 +61,7 @@ url = "https://magmacrunch.duckdns.org/mcp"
 api_key = "your-key"
 
 [pi]
-host = "192.168.1.16"
+host = "your-pi-host"
 user = "jake"
 
 [gh]

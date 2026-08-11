@@ -31,7 +31,7 @@ url = "https://magmacrunch.duckdns.org/mcp"
 api_key = "your-key"
 
 [pi]
-host = "192.168.1.16"
+host = "your-pi-host"
 user = "jake"
 
 [gh]
@@ -167,6 +167,8 @@ See `scripts/examples/` for working examples:
 | `full-backup.mgs` | MusicBrainz backup pipeline |
 | `weekly-scores.mgs` | Weekly scores report in markdown |
 | `maintenance.mgs` | Weekly maintenance pipeline |
+| `real-domains.mgs` | Test real domain connections (MCP search, scoreboards, games) |
+| `domain-example.mgs` | Domain object overview and usage patterns |
 
 ## Domains
 
@@ -253,6 +255,44 @@ magmascript media providers                  # list available providers
 ```bash
 magmascript cache stats                      # show cache statistics
 magmascript cache clear                      # clear all cache
+```
+
+### Magma — System status dashboard
+```bash
+magmascript magma                            # version, domains, cache stats
+```
+
+### Crunch — Batch pipeline
+```bash
+magmascript crunch mb                        # MusicBrainz backup
+magmascript crunch lastfm                    # Last.fm fetch
+magmascript crunch search                    # Build search index
+magmascript crunch archive                   # Archive pages
+magmascript crunch scores                    # Scores update
+magmascript crunch gh                        # GitHub sync
+magmascript crunch all                       # Run all targets
+```
+
+### Texas — Full/heavy operation (same targets, no shortcuts)
+```bash
+magmascript texas mb                         # Full MusicBrainz backup
+magmascript texas lastfm                     # Full Last.fm fetch
+magmascript texas search                     # Full search index rebuild
+magmascript texas archive                    # Full archive processing
+magmascript texas scores                     # Full scores update
+magmascript texas gh                         # Full GitHub sync
+magmascript texas all                        # Full heavy run
+```
+
+### Toast — Burn/clear caches
+```bash
+magmascript toast cache                      # Clear general cache
+magmascript toast mb-cache                   # Clear MusicBrainz cache
+magmascript toast lastfm-cache               # Clear Last.fm cache
+magmascript toast scores-cache               # Clear scores cache
+magmascript toast gh-cache                   # Clear GitHub cache
+magmascript toast search-index               # Remove search index
+magmascript toast all                        # Clear everything
 ```
 
 ## Python Library
