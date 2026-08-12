@@ -121,6 +121,134 @@ for board in boards {
 }
 ```
 
+### Language Features
+
+#### Import System
+
+```magmascript
+// Import a module (access as namespace)
+intent "utils.mgs"
+result = utils.greet("World")
+
+// Import with alias
+intent "utils.mgs" as u
+result = u.greet("World")
+
+// Import specific names
+intent { greet, farewell } from "utils.mgs"
+result = greet("World")
+```
+
+#### Error Handling
+
+```magmascript
+try {
+    result = risky_operation()
+} haunter (e) {
+    print(f"Error: {e.message}")
+}
+
+// Throw custom errors
+throw fire toad("something went wrong")
+```
+
+MagmaCrunch error vocabulary:
+- `haunter` — syntax/parse errors
+- `fire toad` — runtime errors
+- `devastate` — undefined variable errors
+- `contemplate` — type errors
+- `spooked` — warnings (non-fatal, prints to stderr)
+
+```magmascript
+spooked("this is a warning")
+```
+
+#### File I/O
+
+```magmascript
+content = quarry("data.txt")           // read file
+litho("output.txt", "hello world")    // write file
+```
+
+#### HTTP Requests
+
+```magmascript
+response = http.get("https://api.example.com/data")
+print(response.status)
+print(response.json)
+
+http.post("https://api.example.com/data", body={"key": "value"})
+```
+
+#### Shell Commands
+
+```magmascript
+result = exec("ls -la")
+print(result.stdout)
+print(result.exit_code)
+```
+
+#### Classes
+
+```magmascript
+class Dog {
+    fn init(name) {
+        self.name = name
+    }
+
+    fn bark(self) {
+        return self.name + " says woof!"
+    }
+}
+
+rex = Dog("Rex")
+print(rex.bark())  // "Rex says woof!"
+```
+
+#### Default Parameters
+
+```magmascript
+fn greet(name, greeting="hello") {
+    return greeting + ", " + name + "!"
+}
+
+greet("Jake")           // "hello, Jake!"
+greet("Jake", "hey")    // "hey, Jake!"
+```
+
+#### Multi-Assignment
+
+```magmascript
+a, b = 1, 2
+x, y, z = 10, 20, 30
+a, b = [1, 2]  // list unpacking
+```
+
+#### `in` / `not in` Operators
+
+```magmascript
+if "key" in {"name": "Jake"} { ... }
+if 5 not in [1, 2, 3] { ... }
+if "xyz" not in "hello" { ... }
+```
+
+#### List/String Slicing
+
+```magmascript
+[1, 2, 3, 4, 5][0:3]     // [1, 2, 3]
+[1, 2, 3][::-1]           // [3, 2, 1]
+[0, 1, 2, 3, 4][::2]     // [0, 2, 4]
+"hello world"[0:5]        // "hello"
+"abcdef"[::-1]            // "fedcba"
+```
+
+#### Regex
+
+```magmascript
+"123abc".match("\\d+")            // ["123"] (match at start)
+"abc123def456".findall("\\d+")    // ["123", "456"]
+```
+
 ### Built-in Functions
 
 | Function | Description |
@@ -128,11 +256,14 @@ for board in boards {
 | `print(...)` | Print to stdout |
 | `len(x)` | Length of string, list, or dict |
 | `type(x)` | Type name as string |
-| `range(n)` | List of integers 0..n-1 |
+| `range(n)`, `range(start, stop)`, `range(start, stop, step)` | Generate integer ranges |
 | `str(x)`, `int(x)`, `float(x)` | Type conversions |
 | `abs(x)`, `min(...)`, `max(...)`, `sum(...)` | Math utilities |
 | `keys(d)`, `values(d)` | Dict operations |
 | `args()` | Get script arguments from CLI |
+| `quarry(path)` | Read file contents |
+| `litho(path, content)` | Write content to file |
+| `exec(command)` | Execute shell command, returns `{stdout, stderr, exit_code}` |
 
 ### String Methods
 
@@ -148,6 +279,8 @@ for board in boards {
 | `s.startswith(prefix)` | Check if starts with prefix |
 | `s.endswith(suffix)` | Check if ends with suffix |
 | `s.strip()` | Remove leading/trailing whitespace |
+| `s.match(pattern)` | Match regex at start, return groups or none |
+| `s.findall(pattern)` | Find all non-overlapping regex matches |
 
 ### Example Scripts
 
