@@ -528,12 +528,26 @@ class Parser:
         return left
 
     def parse_comparison(self) -> ast.ASTNode:
-        left = self.parse_addition()
+        left = self.parse_in()
         while self.check(TokenType.LT, TokenType.GT, TokenType.LTE, TokenType.GTE):
+            op = self.advance()
+            right = self.parse_in()
+            left = ast.BinaryOp(
+                op=op.value,
+                left=left,
+                right=right,
+                line=op.line,
+                column=op.column,
+            )
+        return left
+
+    def parse_in(self) -> ast.ASTNode:
+        left = self.parse_addition()
+        while self.check(TokenType.IN):
             op = self.advance()
             right = self.parse_addition()
             left = ast.BinaryOp(
-                op=op.value,
+                op="in",
                 left=left,
                 right=right,
                 line=op.line,
