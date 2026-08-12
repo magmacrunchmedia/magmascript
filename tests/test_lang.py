@@ -1051,6 +1051,38 @@ class TestInterpreterBuiltins:
         result = env.globals.get("x")
         assert result["exit_code"] == 1
 
+    def test_http_get(self):
+        from unittest.mock import patch, MagicMock
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.text = '{"hello": "world"}'
+        mock_response.headers = {"content-type": "application/json"}
+        mock_response.json.return_value = {"hello": "world"}
+
+        with patch("httpx.get", return_value=mock_response) as mock_get:
+            env = Interpreter()
+            env.run(Parser(Lexer('x = http.get("https://example.com")\n').tokenize()).parse())
+            result = env.globals.get("x")
+            assert result["status"] == 200
+            assert result["json"] == {"hello": "world"}
+            mock_get.assert_called_once()
+
+    def test_http_post(self):
+        from unittest.mock import patch, MagicMock
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.text = '{"created": true}'
+        mock_response.headers = {}
+        mock_response.json.return_value = {"created": True}
+
+        with patch("httpx.post", return_value=mock_response) as mock_post:
+            env = Interpreter()
+            env.run(Parser(Lexer('x = http.post("https://example.com", body={"key": "value"})\n').tokenize()).parse())
+            result = env.globals.get("x")
+            assert result["status"] == 201
+            assert result["json"] == {"created": True}
+            mock_post.assert_called_once()
+
 
 class TestInterpreterErrors:
     def test_syntax_error_line_number(self):

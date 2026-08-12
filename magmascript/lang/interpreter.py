@@ -176,6 +176,9 @@ class Interpreter:
         proxies = create_domain_proxies()
         for name, proxy in proxies.items():
             self.globals.define(name, proxy)
+        # Add HTTP proxy for .mgs scripts
+        from magmascript.lang.builtins import HttpProxy
+        self.globals.define("http", HttpProxy())
 
     def _get_source_line(self, line_num: int) -> str | None:
         if self.source is None:
