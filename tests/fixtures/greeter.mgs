@@ -1,0 +1,11 @@
+// greeter.mgs - A simple module for testing imports
+
+greet = fn(name) {
+    return f"Hello, {name}!"
+}
+
+farewell = fn(name) {
+    return f"Goodbye, {name}!"
+}
+
+PI = 3.14159

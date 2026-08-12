@@ -44,6 +44,9 @@ TOKEN_NAMES: dict[TokenType, str] = {
     TokenType.CONTINUE: "'continue'",
     TokenType.PRINT: "'print'",
     TokenType.SPOOKED: "'spooked'",
+    TokenType.INTENT: "'intent'",
+    TokenType.FROM: "'from'",
+    TokenType.AS: "'as'",
     TokenType.TRUE: "'true'",
     TokenType.FALSE: "'false'",
     TokenType.NONE: "'none'",
@@ -202,6 +205,8 @@ class Parser:
             return self.parse_print()
         if self.check(TokenType.SPOOKED):
             return self.parse_spooked()
+        if self.check(TokenType.INTENT):
+            return self.parse_import()
 
         return self.parse_expression_statement()
 
@@ -315,6 +320,59 @@ class Parser:
         message = self.parse_expression()
         self.expect(TokenType.RPAREN)
         return ast.SpookedStatement(message=message, line=token.line, column=token.column)
+
+    def parse_import(self) -> ast.ImportStatement:
+        token = self.expect(TokenType.INTENT)
+        
+        # Check for "intent { name1, name2 } from "module""
+        if self.check(TokenType.LBRACE):
+            self.advance()
+            names = []
+            while not self.check(TokenType.RBRACE):
+                name_token = self.expect(TokenType.IDENTIFIER)
+                names.append(name_token.value)
+                if not self.check(TokenType.RBRACE):
+                    self.expect(TokenType.COMMA)
+            self.expect(TokenType.RBRACE)
+            self.expect(TokenType.FROM)
+            module_token = self.expect(TokenType.STRING)
+            # Handle string token value - could be tuple (quote_type, value) or just string
+            module_value = module_token.value[1] if isinstance(module_token.value, tuple) else module_token.value
+            
+            # Check for "as alias"
+            alias = ""
+            if self.check(TokenType.AS):
+                self.advance()
+                alias_token = self.expect(TokenType.IDENTIFIER)
+                alias = alias_token.value
+            
+            return ast.ImportStatement(
+                module=module_value,
+                names=names,
+                alias=alias,
+                from_import=True,
+                line=token.line,
+                column=token.column,
+            )
+        
+        # Simple import: "intent "module"" or "intent "module" as alias"
+        module_token = self.expect(TokenType.STRING)
+        # Handle string token value - could be tuple (quote_type, value) or just string
+        module_value = module_token.value[1] if isinstance(module_token.value, tuple) else module_token.value
+        
+        alias = ""
+        if self.check(TokenType.AS):
+            self.advance()
+            alias_token = self.expect(TokenType.IDENTIFIER)
+            alias = alias_token.value
+        
+        return ast.ImportStatement(
+            module=module_value,
+            alias=alias,
+            from_import=False,
+            line=token.line,
+            column=token.column,
+        )
 
     def parse_expression_statement(self) -> ast.ASTNode:
         expr = self.parse_expression()
