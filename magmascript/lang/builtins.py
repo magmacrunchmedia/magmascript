@@ -110,6 +110,26 @@ def builtin_sum(*args: Any) -> Any:
     return sum(args)
 
 
+def builtin_quarry(path: str) -> str:
+    """Read file contents (quarry stone from the ground)."""
+    from pathlib import Path
+    try:
+        return Path(path).read_text()
+    except FileNotFoundError:
+        raise FileNotFoundError(f"quarry: file not found: {path}")
+    except IsADirectoryError:
+        raise IsADirectoryError(f"quarry: is a directory: {path}")
+
+
+def builtin_litho(path: str, content: str) -> None:
+    """Write content to file (lithography - writing on stone)."""
+    from pathlib import Path
+    try:
+        Path(path).write_text(content)
+    except IsADirectoryError:
+        raise IsADirectoryError(f"litho: is a directory: {path}")
+
+
 BUILTINS: dict[str, Callable] = {
     "print": builtin_print,
     "echo": builtin_echo,
@@ -125,4 +145,6 @@ BUILTINS: dict[str, Callable] = {
     "min": builtin_min,
     "max": builtin_max,
     "sum": builtin_sum,
+    "quarry": builtin_quarry,
+    "litho": builtin_litho,
 }
