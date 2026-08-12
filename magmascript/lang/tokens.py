@@ -34,6 +34,7 @@ class TokenType(Enum):
     ARROW = auto()
     PLUS_EQ = auto()
     MINUS_EQ = auto()
+    NOT_IN = auto()
 
     # Delimiters
     LPAREN = auto()

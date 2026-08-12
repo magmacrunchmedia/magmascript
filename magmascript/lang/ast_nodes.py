@@ -123,12 +123,14 @@ class WhileLoop(ASTNode):
 class FunctionDef(ASTNode):
     name: str = ""
     params: list[str] = field(default_factory=list)
+    defaults: dict[str, ASTNode] = field(default_factory=dict)
     body: ASTNode = field(default_factory=ASTNode)
 
 
 @dataclass
 class ArrowFunction(ASTNode):
     params: list[str] = field(default_factory=list)
+    defaults: dict[str, ASTNode] = field(default_factory=dict)
     body: ASTNode = field(default_factory=ASTNode)
 
 
@@ -218,4 +220,11 @@ class PropertyAssignment(ASTNode):
     object: ASTNode = field(default_factory=ASTNode)
     property: str = ""
     value: ASTNode = field(default_factory=ASTNode)
+    op: str = "="
+
+
+@dataclass
+class MultiAssignment(ASTNode):
+    targets: list[str] = field(default_factory=list)
+    values: list[ASTNode] = field(default_factory=list)
     op: str = "="

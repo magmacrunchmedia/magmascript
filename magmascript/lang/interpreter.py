@@ -69,15 +69,26 @@ class MgsFunction:
     body: ast.ASTNode
     closure: Environment
     name: str = ""
+    defaults: dict[str, Any] = field(default_factory=dict)
 
     def __call__(self, *args: Any) -> Any:
-        if len(args) != len(self.params):
+        min_args = len(self.params) - len(self.defaults)
+        if len(args) < min_args or len(args) > len(self.params):
             name = self.name or "anonymous"
-            raise RuntimeError(f"{name}() takes {len(self.params)} argument{'s' if len(self.params) != 1 else ''} but {len(args)} {'were' if len(args) != 1 else 'was'} given")
+            if min_args == len(self.params):
+                # No defaults - simple error message
+                raise RuntimeError(f"{name}() takes {len(self.params)} argument{'s' if len(self.params) != 1 else ''} but {len(args)} {'were' if len(args) != 1 else 'was'} given")
+            else:
+                # Has defaults - range error message
+                raise RuntimeError(f"{name}() takes {min_args}-{len(self.params)} argument(s) but {len(args)} {'were' if len(args) != 1 else 'was'} given")
 
         child_env = self.closure.child()
         for param, arg in zip(self.params, args):
             child_env.define(param, arg)
+        # Bind defaults for unprovided params
+        for param in self.params[len(args):]:
+            if param in self.defaults:
+                child_env.define(param, self.defaults[param])
 
         interp = _get_thread_interpreter()
         interp._call_stack.append(self._stack_frame())
@@ -351,6 +362,12 @@ class Interpreter:
             if isinstance(right, (list, str)):
                 return left in right
             raise self.error(f"Cannot use 'in' on {type(right).__name__}", node)
+        if node.op == "not in":
+            if isinstance(right, dict):
+                return left not in right
+            if isinstance(right, (list, str)):
+                return left not in right
+            raise self.error(f"Cannot use 'not in' on {type(right).__name__}", node)
 
         raise RuntimeError(f"Unknown operator: {node.op}", node.line, node.column)
 
@@ -368,6 +385,34 @@ class Interpreter:
         value = self.execute(node.value, env)
         env.set(node.name, value)
         return value
+
+    def exec_MultiAssignment(self, node: ast.MultiAssignment, env: Environment) -> Any:
+        # Evaluate all RHS values
+        values = [self.execute(v, env) for v in node.values]
+
+        # If single RHS value that is iterable (list), unpack it
+        if len(values) == 1 and len(node.targets) > 1:
+            iterable = values[0]
+            if isinstance(iterable, (list,)):
+                if len(iterable) != len(node.targets):
+                    raise self.error(
+                        f"Cannot unpack {len(iterable)} values into {len(node.targets)} targets",
+                        node,
+                    )
+                values = list(iterable)
+
+        # Validate count match
+        if len(node.targets) != len(values):
+            raise self.error(
+                f"Multi-assignment mismatch: {len(node.targets)} targets, {len(values)} values",
+                node,
+            )
+
+        # Assign each value
+        for name, value in zip(node.targets, values):
+            env.set(name, value)
+
+        return values[0] if len(values) == 1 else values
 
     def exec_PropertyAccess(self, node: ast.PropertyAccess, env: Environment) -> Any:
         obj = self.execute(node.object, env)
@@ -573,21 +618,30 @@ class Interpreter:
         return result
 
     def exec_FunctionDef(self, node: ast.FunctionDef, env: Environment) -> Any:
+        # Evaluate defaults at definition time
+        evaluated_defaults = {
+            name: self.execute(expr, env) for name, expr in node.defaults.items()
+        }
         func = MgsFunction(
             params=node.params,
             body=node.body,
             closure=env,
             name=node.name,
+            defaults=evaluated_defaults,
         )
         if node.name:
             env.define(node.name, func)
         return func
 
     def exec_ArrowFunction(self, node: ast.ArrowFunction, env: Environment) -> Any:
+        evaluated_defaults = {
+            name: self.execute(expr, env) for name, expr in node.defaults.items()
+        }
         return MgsFunction(
             params=node.params,
             body=node.body,
             closure=env,
+            defaults=evaluated_defaults,
         )
 
     def exec_ReturnStatement(self, node: ast.ReturnStatement, env: Environment) -> Any:
@@ -831,11 +885,16 @@ class Interpreter:
     def exec_ClassDef(self, node: ast.ClassDef, env: Environment) -> Any:
         methods = {}
         for method_node in node.methods:
+            # Evaluate defaults at class definition time
+            evaluated_defaults = {
+                name: self.execute(expr, env) for name, expr in method_node.defaults.items()
+            }
             func = MgsFunction(
                 params=method_node.params,
                 body=method_node.body,
                 closure=env,
                 name=method_node.name,
+                defaults=evaluated_defaults,
             )
             methods[method_node.name] = func
 
