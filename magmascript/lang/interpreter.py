@@ -345,6 +345,16 @@ class Interpreter:
 
     def exec_IndexAccess(self, node: ast.IndexAccess, env: Environment) -> Any:
         obj = self.execute(node.object, env)
+
+        # Handle slice syntax: list[start:stop:step]
+        if isinstance(node.index, ast.Slice):
+            start = self.execute(node.index.start, env) if node.index.start else None
+            stop = self.execute(node.index.stop, env) if node.index.stop else None
+            step = self.execute(node.index.step, env) if node.index.step else None
+            if isinstance(obj, (list, str)):
+                return obj[start:stop:step]
+            raise self.error(f"Cannot slice {type(obj).__name__}", node)
+
         index = self.execute(node.index, env)
 
         if isinstance(obj, list):

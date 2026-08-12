@@ -1138,6 +1138,51 @@ class TestInterpreterBuiltins:
         env.run(Parser(Lexer('x = "abc".findall("\\d+")\n').tokenize()).parse())
         assert env.globals.get("x") == []
 
+    def test_list_slice_basic(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = [1, 2, 3, 4, 5][0:3]\n').tokenize()).parse())
+        assert env.globals.get("x") == [1, 2, 3]
+
+    def test_list_slice_end(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = [1, 2, 3, 4, 5][3:5]\n').tokenize()).parse())
+        assert env.globals.get("x") == [4, 5]
+
+    def test_list_slice_middle(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = [1, 2, 3, 4, 5][1:4]\n').tokenize()).parse())
+        assert env.globals.get("x") == [2, 3, 4]
+
+    def test_list_slice_step(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = [0, 1, 2, 3, 4][::2]\n').tokenize()).parse())
+        assert env.globals.get("x") == [0, 2, 4]
+
+    def test_list_slice_reverse(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = [1, 2, 3][::-1]\n').tokenize()).parse())
+        assert env.globals.get("x") == [3, 2, 1]
+
+    def test_list_slice_from_start(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = [1, 2, 3, 4, 5][:3]\n').tokenize()).parse())
+        assert env.globals.get("x") == [1, 2, 3]
+
+    def test_list_slice_to_end(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = [1, 2, 3, 4, 5][2:]\n').tokenize()).parse())
+        assert env.globals.get("x") == [3, 4, 5]
+
+    def test_string_slice(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "hello world"[0:5]\n').tokenize()).parse())
+        assert env.globals.get("x") == "hello"
+
+    def test_string_slice_reverse(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "abcdef"[::-1]\n').tokenize()).parse())
+        assert env.globals.get("x") == "fedcba"
+
 
 class TestInterpreterErrors:
     def test_syntax_error_line_number(self):

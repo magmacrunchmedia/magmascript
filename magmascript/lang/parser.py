@@ -619,14 +619,51 @@ class Parser:
                         column=prop.column,
                     )
             elif self.match(TokenType.LBRACKET):
-                index = self.parse_expression()
-                self.expect(TokenType.RBRACKET)
-                expr = ast.IndexAccess(
-                    object=expr,
-                    index=index,
-                    line=expr.line,
-                    column=expr.column,
-                )
+                # Check if this is a slice (starts with ':' or is '[]')
+                if self.check(TokenType.COLON) or self.check(TokenType.RBRACKET):
+                    # Slice with no start: [:stop] or [::step] or [:stop:step]
+                    start = None
+                    stop = None
+                    step = None
+                    if self.match(TokenType.COLON):
+                        if not self.check(TokenType.RBRACKET) and not self.check(TokenType.COLON):
+                            stop = self.parse_expression()
+                    if self.match(TokenType.COLON):
+                        if not self.check(TokenType.RBRACKET):
+                            step = self.parse_expression()
+                    self.expect(TokenType.RBRACKET)
+                    expr = ast.IndexAccess(
+                        object=expr,
+                        index=ast.Slice(start=start, stop=stop, step=step, line=expr.line, column=expr.column),
+                        line=expr.line,
+                        column=expr.column,
+                    )
+                else:
+                    first = self.parse_expression()
+                    if self.match(TokenType.COLON):
+                        # This is a slice: first:...
+                        stop = None
+                        step = None
+                        if not self.check(TokenType.RBRACKET) and not self.check(TokenType.COLON):
+                            stop = self.parse_expression()
+                        if self.match(TokenType.COLON):
+                            if not self.check(TokenType.RBRACKET):
+                                step = self.parse_expression()
+                        self.expect(TokenType.RBRACKET)
+                        expr = ast.IndexAccess(
+                            object=expr,
+                            index=ast.Slice(start=first, stop=stop, step=step, line=first.line, column=first.column),
+                            line=expr.line,
+                            column=expr.column,
+                        )
+                    else:
+                        self.expect(TokenType.RBRACKET)
+                        expr = ast.IndexAccess(
+                            object=expr,
+                            index=first,
+                            line=expr.line,
+                            column=expr.column,
+                        )
             elif self.check(TokenType.LPAREN):
                 self.advance()
                 args = self.parse_arguments()
