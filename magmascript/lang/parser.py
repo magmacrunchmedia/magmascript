@@ -43,6 +43,7 @@ TOKEN_NAMES: dict[TokenType, str] = {
     TokenType.BREAK: "'break'",
     TokenType.CONTINUE: "'continue'",
     TokenType.PRINT: "'print'",
+    TokenType.SPOOKED: "'spooked'",
     TokenType.TRUE: "'true'",
     TokenType.FALSE: "'false'",
     TokenType.NONE: "'none'",
@@ -77,7 +78,7 @@ class ParseError(Exception):
         loc = f"line {self.token.line}, column {self.token.column}"
         if self.filename:
             loc = f"{self.filename}:{loc}"
-        parts.append(f"Parse error at {loc}")
+        parts.append(f"haunter at {loc}")
 
         if self.source_line is not None:
             line_num = str(self.token.line)
@@ -199,6 +200,8 @@ class Parser:
             return ast.ContinueStatement(line=self.tokens[self.pos - 1].line)
         if self.check(TokenType.PRINT) or self.check(TokenType.IDENTIFIER) and self.peek().value == "print":
             return self.parse_print()
+        if self.check(TokenType.SPOOKED):
+            return self.parse_spooked()
 
         return self.parse_expression_statement()
 
@@ -305,6 +308,13 @@ class Parser:
                 args.append(self.parse_expression())
         self.expect(TokenType.RPAREN)
         return ast.PrintStatement(arguments=args, line=token.line, column=token.column)
+
+    def parse_spooked(self) -> ast.SpookedStatement:
+        token = self.expect(TokenType.SPOOKED)
+        self.expect(TokenType.LPAREN)
+        message = self.parse_expression()
+        self.expect(TokenType.RPAREN)
+        return ast.SpookedStatement(message=message, line=token.line, column=token.column)
 
     def parse_expression_statement(self) -> ast.ASTNode:
         expr = self.parse_expression()

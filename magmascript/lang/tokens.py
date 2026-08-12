@@ -57,6 +57,7 @@ class TokenType(Enum):
     BREAK = auto()
     CONTINUE = auto()
     PRINT = auto()
+    SPOOKED = auto()
 
     # Special
     NEWLINE = auto()
@@ -82,6 +83,7 @@ KEYWORDS: dict[str, TokenType] = {
     "or": TokenType.OR,
     "not": TokenType.NOT,
     "print": TokenType.PRINT,
+    "spooked": TokenType.SPOOKED,
 }
 
 

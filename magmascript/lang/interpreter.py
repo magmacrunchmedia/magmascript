@@ -11,13 +11,14 @@ from magmascript.lang.util import suggest
 
 
 class RuntimeError(Exception):
-    def __init__(self, message: str, line: int = 0, column: int = 0, filename: str | None = None, source_line: str | None = None, call_stack: list[str] | None = None) -> None:
+    def __init__(self, message: str, line: int = 0, column: int = 0, filename: str | None = None, source_line: str | None = None, call_stack: list[str] | None = None, prefix: str = "fire toad") -> None:
         self.line = line
         self.column = column
         self.filename = filename
         self.source_line = source_line
         self.call_stack = call_stack or []
         self.message = message
+        self.prefix = prefix
         super().__init__(message)
 
     def format(self) -> str:
@@ -26,7 +27,7 @@ class RuntimeError(Exception):
             loc = f"line {self.line}, column {self.column}"
             if self.filename:
                 loc = f"{self.filename}:{loc}"
-            parts.append(f"Runtime error at {loc}")
+            parts.append(f"{self.prefix} at {loc}")
 
             if self.source_line is not None:
                 line_num = str(self.line)
@@ -36,7 +37,7 @@ class RuntimeError(Exception):
                 caret = " " * (self.column - 1) + "^"
                 parts.append(f"  {padding} | {caret}")
         else:
-            parts.append("Runtime error")
+            parts.append(self.prefix)
 
         parts.append(self.message)
 
@@ -182,11 +183,11 @@ class Interpreter:
             return lines[line_num - 1]
         return None
 
-    def error(self, message: str, node: ast.ASTNode | None = None) -> RuntimeError:
+    def error(self, message: str, node: ast.ASTNode | None = None, prefix: str = "fire toad") -> RuntimeError:
         line = getattr(node, "line", 0) or 0
         column = getattr(node, "column", 0) or 0
         source_line = self._get_source_line(line) if line else None
-        return RuntimeError(message, line, column, self.filename, source_line, list(self._call_stack))
+        return RuntimeError(message, line, column, self.filename, source_line, list(self._call_stack), prefix)
 
     def run(self, program: ast.Program) -> Any:
         result = None
@@ -232,7 +233,7 @@ class Interpreter:
             msg = f"Undefined variable '{node.name}'"
             if e.suggestion:
                 msg += f" — did you mean '{e.suggestion}'?"
-            raise self.error(msg, node)
+            raise self.error(msg, node, prefix="devastate")
 
     def exec_BinaryOp(self, node: ast.BinaryOp, env: Environment) -> Any:
         left = self.execute(node.left, env)
@@ -354,7 +355,7 @@ class Interpreter:
             except RuntimeError:
                 raise
             except TypeError as e:
-                raise self.error(str(e), node)
+                raise self.error(str(e), node, prefix="contemplate")
 
         raise self.error(f"Cannot call non-function: {type(callee).__name__}", node)
 
@@ -375,7 +376,7 @@ class Interpreter:
                 except RuntimeError:
                     raise
                 except TypeError as e:
-                    raise self.error(str(e), node)
+                    raise self.error(str(e), node, prefix="contemplate")
 
         if hasattr(obj, "_obj"):
             method = getattr(obj, node.method, None)
@@ -386,7 +387,7 @@ class Interpreter:
                 except RuntimeError:
                     raise
                 except TypeError as e:
-                    raise self.error(str(e), node)
+                    raise self.error(str(e), node, prefix="contemplate")
 
         if hasattr(obj, node.method):
             method = getattr(obj, node.method)
@@ -397,7 +398,7 @@ class Interpreter:
                 except RuntimeError:
                     raise
                 except TypeError as e:
-                    raise self.error(str(e), node)
+                    raise self.error(str(e), node, prefix="contemplate")
 
         type_name = type(obj).__name__
         if hasattr(obj, "_obj"):
@@ -514,6 +515,18 @@ class Interpreter:
     def exec_PrintStatement(self, node: ast.PrintStatement, env: Environment) -> Any:
         args = [self.execute(arg, env) for arg in node.arguments]
         print(*[str(a) for a in args])
+        return None
+
+    def exec_SpookedStatement(self, node: ast.SpookedStatement, env: Environment) -> Any:
+        import sys
+        message = self.execute(node.message, env)
+        prefix = "spooked"
+        if node.line:
+            loc = f" at line {node.line}"
+            if self.filename:
+                loc = f" at {self.filename}:{node.line}"
+            prefix += loc
+        print(f"{prefix}: {message}", file=sys.stderr)
         return None
 
     def _is_truthy(self, value: Any) -> bool:

@@ -17,7 +17,7 @@ class LexerError(Exception):
         loc = f"line {self.line}, column {self.column}"
         if self.filename:
             loc = f"{self.filename}:{loc}"
-        parts.append(f"Syntax error at {loc}")
+        parts.append(f"haunter at {loc}")
 
         if self.source_line is not None:
             line_num = str(self.line)
