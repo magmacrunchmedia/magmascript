@@ -185,3 +185,16 @@ class ImportStatement(ASTNode):
     names: list[str] = field(default_factory=list)
     alias: str = ""
     from_import: bool = False
+
+
+@dataclass
+class TryCatch(ASTNode):
+    try_block: ASTNode = field(default_factory=Block)
+    catch_param: str = ""
+    catch_block: ASTNode = field(default_factory=Block)
+
+
+@dataclass
+class ThrowStatement(ASTNode):
+    error_type: str = "fire toad"
+    message: ASTNode = field(default_factory=StringLiteral)

@@ -694,6 +694,31 @@ class Interpreter:
         
         return None
 
+    def exec_TryCatch(self, node: ast.TryCatch, env: Environment) -> Any:
+        try:
+            return self.execute(node.try_block, env)
+        except RuntimeError as e:
+            # Bind the error to the catch parameter
+            catch_env = env.child()
+            catch_env.define(node.catch_param, {
+                "message": e.message,
+                "line": e.line,
+                "file": e.filename,
+                "prefix": e.prefix,
+                "format": lambda: e.format(),
+            })
+            return self.execute(node.catch_block, catch_env)
+
+    def exec_ThrowStatement(self, node: ast.ThrowStatement, env: Environment) -> Any:
+        message = self.execute(node.message, env)
+        raise RuntimeError(
+            str(message),
+            node.line,
+            node.column,
+            self.filename,
+            prefix=node.error_type,
+        )
+
     def _is_truthy(self, value: Any) -> bool:
         if value is None:
             return False
