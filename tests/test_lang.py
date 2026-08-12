@@ -999,6 +999,39 @@ class TestInterpreterBuiltins:
         # Dict literals aren't supported yet, so we'll skip this test
         pytest.skip("Dict literals not yet supported")
 
+    def test_quarry_reads_file(self, tmp_path):
+        test_file = tmp_path / "test.txt"
+        test_file.write_text("hello world")
+        env = Interpreter()
+        env.run(Parser(Lexer(f'x = quarry("{test_file}")\n').tokenize()).parse())
+        assert env.globals.get("x") == "hello world"
+
+    def test_litho_writes_file(self, tmp_path):
+        test_file = tmp_path / "output.txt"
+        env = Interpreter()
+        env.run(Parser(Lexer(f'litho("{test_file}", "hello world")\n').tokenize()).parse())
+        assert test_file.read_text() == "hello world"
+
+    def test_litho_creates_file(self, tmp_path):
+        test_file = tmp_path / "new.txt"
+        assert not test_file.exists()
+        env = Interpreter()
+        env.run(Parser(Lexer(f'litho("{test_file}", "created")\n').tokenize()).parse())
+        assert test_file.exists()
+        assert test_file.read_text() == "created"
+
+    def test_litho_overwrites_file(self, tmp_path):
+        test_file = tmp_path / "overwrite.txt"
+        test_file.write_text("old content")
+        env = Interpreter()
+        env.run(Parser(Lexer(f'litho("{test_file}", "new content")\n').tokenize()).parse())
+        assert test_file.read_text() == "new content"
+
+    def test_quarry_not_found(self):
+        env = Interpreter()
+        with pytest.raises(FileNotFoundError):
+            env.run(Parser(Lexer('quarry("/nonexistent/file.txt")\n').tokenize()).parse())
+
 
 class TestInterpreterErrors:
     def test_syntax_error_line_number(self):
