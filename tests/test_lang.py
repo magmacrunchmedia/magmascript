@@ -1113,6 +1113,31 @@ class TestInterpreterBuiltins:
         env.run(Parser(Lexer('x = "email" in {"name": "Jake", "age": 30}\n').tokenize()).parse())
         assert env.globals.get("x") is False
 
+    def test_string_match(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "123abc".match("\\d+")\n').tokenize()).parse())
+        assert env.globals.get("x") == ["123"]
+
+    def test_string_match_no_match(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "abc".match("\\d+")\n').tokenize()).parse())
+        assert env.globals.get("x") is None
+
+    def test_string_findall(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "abc123def456".findall("\\d+")\n').tokenize()).parse())
+        assert env.globals.get("x") == ["123", "456"]
+
+    def test_string_findall_letters(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "hello world".findall("[a-z]+")\n').tokenize()).parse())
+        assert env.globals.get("x") == ["hello", "world"]
+
+    def test_string_findall_empty(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "abc".findall("\\d+")\n').tokenize()).parse())
+        assert env.globals.get("x") == []
+
 
 class TestInterpreterErrors:
     def test_syntax_error_line_number(self):
