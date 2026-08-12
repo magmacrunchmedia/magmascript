@@ -80,6 +80,13 @@ class IndexAccess(ASTNode):
 
 
 @dataclass
+class Slice(ASTNode):
+    start: ASTNode | None = None
+    stop: ASTNode | None = None
+    step: ASTNode | None = None
+
+
+@dataclass
 class FunctionCall(ASTNode):
     callee: ASTNode = field(default_factory=ASTNode)
     arguments: list[ASTNode] = field(default_factory=list)
