@@ -873,12 +873,13 @@ class Parser:
 
         if self.match(TokenType.FN):
             self.expect(TokenType.LPAREN)
-            params = self.parse_params()
+            params, defaults = self.parse_params()
             self.expect(TokenType.RPAREN)
             if self.match(TokenType.ARROW):
                 body_expr = self.parse_expression()
                 return ast.ArrowFunction(
                     params=params,
+                    defaults=defaults,
                     body=body_expr,
                     line=token.line,
                     column=token.column,
@@ -888,6 +889,7 @@ class Parser:
                 return ast.FunctionDef(
                     name="",
                     params=params,
+                    defaults=defaults,
                     body=body,
                     line=token.line,
                     column=token.column,
