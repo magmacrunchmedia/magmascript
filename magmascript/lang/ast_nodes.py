@@ -177,3 +177,11 @@ class PrintStatement(ASTNode):
 @dataclass
 class SpookedStatement(ASTNode):
     message: ASTNode = field(default_factory=StringLiteral)
+
+
+@dataclass
+class ImportStatement(ASTNode):
+    module: str = ""
+    names: list[str] = field(default_factory=list)
+    alias: str = ""
+    from_import: bool = False

@@ -58,6 +58,9 @@ class TokenType(Enum):
     CONTINUE = auto()
     PRINT = auto()
     SPOOKED = auto()
+    INTENT = auto()
+    FROM = auto()
+    AS = auto()
 
     # Special
     NEWLINE = auto()
@@ -84,6 +87,9 @@ KEYWORDS: dict[str, TokenType] = {
     "not": TokenType.NOT,
     "print": TokenType.PRINT,
     "spooked": TokenType.SPOOKED,
+    "intent": TokenType.INTENT,
+    "from": TokenType.FROM,
+    "as": TokenType.AS,
 }
 
 

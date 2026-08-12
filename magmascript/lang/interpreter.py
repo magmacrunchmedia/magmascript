@@ -162,6 +162,8 @@ class Interpreter:
         self.filename = filename
         self._call_stack: list[str] = []
         self._script_args = script_args or []
+        self._module_cache: dict[str, Environment] = {}
+        self._loading_modules: set[str] = set()
         self._setup_builtins()
         self._setup_domains()
 
@@ -378,6 +380,18 @@ class Interpreter:
                 except TypeError as e:
                     raise self.error(str(e), node, prefix="contemplate")
 
+        # Support calling functions stored in dicts: module.func()
+        if isinstance(obj, dict) and node.method in obj:
+            func = obj[node.method]
+            if callable(func):
+                try:
+                    return func(*args)
+                except RuntimeError:
+                    raise
+                except TypeError as e:
+                    raise self.error(str(e), node, prefix="contemplate")
+            return func
+
         if hasattr(obj, "_obj"):
             method = getattr(obj, node.method, None)
             if method:
@@ -527,6 +541,157 @@ class Interpreter:
                 loc = f" at {self.filename}:{node.line}"
             prefix += loc
         print(f"{prefix}: {message}", file=sys.stderr)
+        return None
+
+    def _resolve_module_path(self, module: str) -> str:
+        """Resolve module path relative to current file or search path."""
+        from pathlib import Path
+        
+        # If it's an absolute path, use it directly
+        if Path(module).is_absolute():
+            if not Path(module).suffix:
+                return module + ".mgs"
+            return module
+        
+        # If it's a relative path (starts with ./ or ../), resolve relative to current file
+        if module.startswith("./") or module.startswith("../"):
+            if self.filename:
+                current_dir = Path(self.filename).parent
+                resolved = (current_dir / module).resolve()
+            else:
+                resolved = Path(module).resolve()
+            if not resolved.suffix:
+                resolved = resolved.with_suffix(".mgs")
+            return str(resolved)
+        
+        # For non-relative paths, search in current file's directory
+        candidates = []
+        if self.filename:
+            current_dir = Path(self.filename).parent
+            candidates.append(current_dir / module)
+            candidates.append(current_dir / "lib" / module)
+        
+        # Add ~/.magmascript/lib/
+        home = Path.home()
+        candidates.append(home / ".magmascript" / "lib" / module)
+        
+        # Try with .mgs extension
+        for candidate in candidates:
+            if candidate.with_suffix(".mgs").exists():
+                return str(candidate.with_suffix(".mgs"))
+            if candidate.exists():
+                return str(candidate)
+        
+        # If not found, return the first candidate with .mgs extension
+        if candidates:
+            return str(candidates[0].with_suffix(".mgs"))
+        else:
+            return module + ".mgs"
+
+    def _load_module(self, module_path: str, node: ast.ImportStatement) -> Environment:
+        """Load and execute a module, returning its environment."""
+        from pathlib import Path
+        
+        # Check cache
+        if module_path in self._module_cache:
+            return self._module_cache[module_path]
+        
+        # Check for circular imports
+        if module_path in self._loading_modules:
+            raise RuntimeError(
+                f"Circular import detected: {module_path}",
+                node.line,
+                node.column,
+                self.filename,
+                prefix="fire toad",
+            )
+        
+        # Check file exists
+        if not Path(module_path).exists():
+            raise RuntimeError(
+                f"Module not found: {module_path}",
+                node.line,
+                node.column,
+                self.filename,
+                prefix="fire toad",
+            )
+        
+        # Read and parse the module
+        self._loading_modules.add(module_path)
+        try:
+            with open(module_path, "r") as f:
+                source = f.read()
+            
+            from magmascript.lang.lexer import Lexer
+            from magmascript.lang.parser import Parser
+            
+            tokens = Lexer(source, filename=module_path).tokenize()
+            program = Parser(tokens, source=source, filename=module_path).parse()
+            
+            # Create a new interpreter for the module
+            interpreter = Interpreter(source=source, filename=module_path, script_args=self._script_args)
+            interpreter._module_cache = self._module_cache
+            interpreter._loading_modules = self._loading_modules
+            interpreter.run(program)
+            
+            # Cache the module
+            self._module_cache[module_path] = interpreter.globals
+            
+            return interpreter.globals
+        finally:
+            self._loading_modules.discard(module_path)
+
+    def exec_ImportStatement(self, node: ast.ImportStatement, env: Environment) -> Any:
+        module_path = self._resolve_module_path(node.module)
+        module_env = self._load_module(module_path, node)
+        
+        # Determine the namespace name - use the original module name, not the resolved path
+        namespace = node.alias or node.module
+        if namespace.endswith(".mgs"):
+            namespace = namespace[:-4]
+        # If the namespace is a full path, extract just the filename
+        if "/" in namespace or "\\" in namespace:
+            from pathlib import Path
+            namespace = Path(namespace).stem
+        
+        if node.from_import:
+            # Import specific names: intent { name1, name2 } from "module"
+            if node.alias:
+                # intent { name1, name2 } from "module" as alias
+                # Create a namespace object with the specified names
+                namespace_obj = {}
+                for name in node.names:
+                    if name in module_env.variables:
+                        namespace_obj[name] = module_env.variables[name]
+                    else:
+                        raise RuntimeError(
+                            f"Name '{name}' not found in module '{node.module}'",
+                            node.line,
+                            node.column,
+                            self.filename,
+                            prefix="fire toad",
+                        )
+                env.define(namespace, namespace_obj)
+            else:
+                # intent { name1, name2 } from "module"
+                # Import names directly into current scope
+                for name in node.names:
+                    if name in module_env.variables:
+                        env.define(name, module_env.variables[name])
+                    else:
+                        raise RuntimeError(
+                            f"Name '{name}' not found in module '{node.module}'",
+                            node.line,
+                            node.column,
+                            self.filename,
+                            prefix="fire toad",
+                        )
+        else:
+            # Import entire module: intent "module" or intent "module" as alias
+            # Convert module environment to a dict for property access
+            module_dict = dict(module_env.variables)
+            env.define(namespace, module_dict)
+        
         return None
 
     def _is_truthy(self, value: Any) -> bool:
