@@ -3,6 +3,50 @@ from __future__ import annotations
 from typing import Any, Callable
 
 
+class HttpProxy:
+    """HTTP client for making requests from .mgs scripts."""
+
+    def get(self, url: str, **kwargs: Any) -> dict:
+        """Make a GET request and return status, text, json, headers."""
+        import httpx
+        try:
+            response = httpx.get(url, timeout=30, **kwargs)
+            result: dict[str, Any] = {
+                "status": response.status_code,
+                "text": response.text,
+                "headers": dict(response.headers),
+            }
+            try:
+                result["json"] = response.json()
+            except Exception:
+                result["json"] = None
+            return result
+        except httpx.TimeoutException:
+            raise TimeoutError(f"http.get: request timed out after 30 seconds: {url}")
+        except httpx.RequestError as e:
+            raise ConnectionError(f"http.get: request failed: {e}")
+
+    def post(self, url: str, body: Any = None, **kwargs: Any) -> dict:
+        """Make a POST request and return status, text, json, headers."""
+        import httpx
+        try:
+            response = httpx.post(url, json=body, timeout=30, **kwargs)
+            result = {
+                "status": response.status_code,
+                "text": response.text,
+                "headers": dict(response.headers),
+            }
+            try:
+                result["json"] = response.json()
+            except Exception:
+                result["json"] = None
+            return result
+        except httpx.TimeoutException:
+            raise TimeoutError(f"http.post: request timed out after 30 seconds: {url}")
+        except httpx.RequestError as e:
+            raise ConnectionError(f"http.post: request failed: {e}")
+
+
 def builtin_print(*args: Any) -> None:
     print(*[str(a) for a in args])
 
