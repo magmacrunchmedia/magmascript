@@ -172,3 +172,8 @@ class ExprStatement(ASTNode):
 @dataclass
 class PrintStatement(ASTNode):
     arguments: list[ASTNode] = field(default_factory=list)
+
+
+@dataclass
+class SpookedStatement(ASTNode):
+    message: ASTNode = field(default_factory=StringLiteral)
