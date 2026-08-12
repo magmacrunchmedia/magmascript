@@ -205,3 +205,17 @@ class TryCatch(ASTNode):
 class ThrowStatement(ASTNode):
     error_type: str = "fire toad"
     message: ASTNode = field(default_factory=StringLiteral)
+
+
+@dataclass
+class ClassDef(ASTNode):
+    name: str = ""
+    methods: list[FunctionDef] = field(default_factory=list)
+
+
+@dataclass
+class PropertyAssignment(ASTNode):
+    object: ASTNode = field(default_factory=ASTNode)
+    property: str = ""
+    value: ASTNode = field(default_factory=ASTNode)
+    op: str = "="

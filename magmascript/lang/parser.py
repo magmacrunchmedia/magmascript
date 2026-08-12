@@ -50,6 +50,8 @@ TOKEN_NAMES: dict[TokenType, str] = {
     TokenType.TRY: "'try'",
     TokenType.HAUNTER: "'haunter'",
     TokenType.THROW: "'throw'",
+    TokenType.CLASS: "'class'",
+    TokenType.SELF: "'self'",
     TokenType.TRUE: "'true'",
     TokenType.FALSE: "'false'",
     TokenType.NONE: "'none'",
@@ -214,6 +216,8 @@ class Parser:
             return self.parse_try_catch()
         if self.check(TokenType.THROW):
             return self.parse_throw()
+        if self.check(TokenType.CLASS):
+            return self.parse_class_def()
 
         return self.parse_expression_statement()
 
@@ -295,9 +299,18 @@ class Parser:
     def parse_params(self) -> list[str]:
         params = []
         if not self.check(TokenType.RPAREN):
-            params.append(self.expect(TokenType.IDENTIFIER).value)
+            # Accept both IDENTIFIER and SELF as parameter names
+            token = self.peek()
+            if token.type in (TokenType.IDENTIFIER, TokenType.SELF):
+                params.append(self.advance().value)
+            else:
+                raise self.error("Expected parameter name", token)
             while self.match(TokenType.COMMA):
-                params.append(self.expect(TokenType.IDENTIFIER).value)
+                token = self.peek()
+                if token.type in (TokenType.IDENTIFIER, TokenType.SELF):
+                    params.append(self.advance().value)
+                else:
+                    raise self.error("Expected parameter name", token)
         return params
 
     def parse_return(self) -> ast.ReturnStatement:
@@ -420,6 +433,42 @@ class Parser:
             column=token.column,
         )
 
+    def parse_class_def(self) -> ast.ClassDef:
+        token = self.expect(TokenType.CLASS)
+        name_token = self.expect(TokenType.IDENTIFIER)
+        
+        # Support both brace block and indent block
+        if self.match(TokenType.LBRACE):
+            self.skip_newlines()
+            methods = []
+            while not self.check(TokenType.RBRACE) and not self.check(TokenType.EOF):
+                if self.check(TokenType.FN):
+                    methods.append(self.parse_function_def())
+                else:
+                    raise self.error("Expected method definition (fn) inside class", self.peek())
+                self.skip_newlines()
+            self.expect(TokenType.RBRACE)
+        else:
+            self.expect(TokenType.COLON)
+            self.skip_newlines()
+            self.expect(TokenType.INDENT)
+            methods = []
+            while not self.check(TokenType.DEDENT) and not self.check(TokenType.EOF):
+                self.skip_newlines()
+                if self.check(TokenType.FN):
+                    methods.append(self.parse_function_def())
+                else:
+                    raise self.error("Expected method definition (fn) inside class", self.peek())
+                self.skip_newlines()
+            self.expect(TokenType.DEDENT)
+        
+        return ast.ClassDef(
+            name=name_token.value,
+            methods=methods,
+            line=token.line,
+            column=token.column,
+        )
+
     def parse_expression_statement(self) -> ast.ASTNode:
         expr = self.parse_expression()
 
@@ -477,6 +526,19 @@ class Parser:
                 value = self.parse_assignment()
                 return ast.Assignment(
                     name=expr.name,
+                    value=value,
+                    op="=",
+                    line=expr.line,
+                    column=expr.column,
+                )
+
+        # Handle property assignment: obj.prop = value
+        if isinstance(expr, ast.PropertyAccess):
+            if self.match(TokenType.EQ):
+                value = self.parse_assignment()
+                return ast.PropertyAssignment(
+                    object=expr.object,
+                    property=expr.property,
                     value=value,
                     op="=",
                     line=expr.line,
@@ -713,6 +775,11 @@ class Parser:
                     column=name_token.column,
                 )
             return ast.Identifier(name=name_token.value, line=name_token.line, column=name_token.column)
+
+        # Treat 'self' as an identifier in expressions
+        if self.match(TokenType.SELF):
+            name_token = self.tokens[self.pos - 1]
+            return ast.Identifier(name="self", line=name_token.line, column=name_token.column)
 
         if self.match(TokenType.LPAREN):
             expr = self.parse_expression()

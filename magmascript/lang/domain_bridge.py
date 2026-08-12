@@ -81,11 +81,14 @@ class ListWrapper:
 
 
 def wrap_result(result: Any) -> Any:
+    from magmascript.lang.interpreter import MgsInstance, MgsClass
     if result is None:
         return None
     if isinstance(result, (int, float, str, bool)):
         return result
     if callable(result):
+        return result
+    if isinstance(result, (MgsInstance, MgsClass)):
         return result
     if isinstance(result, list):
         return ListWrapper(result)
