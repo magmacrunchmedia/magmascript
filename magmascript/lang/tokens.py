@@ -61,6 +61,9 @@ class TokenType(Enum):
     INTENT = auto()
     FROM = auto()
     AS = auto()
+    TRY = auto()
+    HAUNTER = auto()
+    THROW = auto()
 
     # Special
     NEWLINE = auto()
@@ -90,6 +93,9 @@ KEYWORDS: dict[str, TokenType] = {
     "intent": TokenType.INTENT,
     "from": TokenType.FROM,
     "as": TokenType.AS,
+    "try": TokenType.TRY,
+    "haunter": TokenType.HAUNTER,
+    "throw": TokenType.THROW,
 }
 
 

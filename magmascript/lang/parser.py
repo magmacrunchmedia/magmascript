@@ -47,6 +47,9 @@ TOKEN_NAMES: dict[TokenType, str] = {
     TokenType.INTENT: "'intent'",
     TokenType.FROM: "'from'",
     TokenType.AS: "'as'",
+    TokenType.TRY: "'try'",
+    TokenType.HAUNTER: "'haunter'",
+    TokenType.THROW: "'throw'",
     TokenType.TRUE: "'true'",
     TokenType.FALSE: "'false'",
     TokenType.NONE: "'none'",
@@ -207,6 +210,10 @@ class Parser:
             return self.parse_spooked()
         if self.check(TokenType.INTENT):
             return self.parse_import()
+        if self.check(TokenType.TRY):
+            return self.parse_try_catch()
+        if self.check(TokenType.THROW):
+            return self.parse_throw()
 
         return self.parse_expression_statement()
 
@@ -370,6 +377,45 @@ class Parser:
             module=module_value,
             alias=alias,
             from_import=False,
+            line=token.line,
+            column=token.column,
+        )
+
+    def parse_try_catch(self) -> ast.TryCatch:
+        token = self.expect(TokenType.TRY)
+        try_block = self.parse_block()
+        
+        self.skip_newlines()
+        self.expect(TokenType.HAUNTER)
+        self.expect(TokenType.LPAREN)
+        catch_param = self.expect(TokenType.IDENTIFIER).value
+        self.expect(TokenType.RPAREN)
+        catch_block = self.parse_block()
+        
+        return ast.TryCatch(
+            try_block=try_block,
+            catch_param=catch_param,
+            catch_block=catch_block,
+            line=token.line,
+            column=token.column,
+        )
+
+    def parse_throw(self) -> ast.ThrowStatement:
+        token = self.expect(TokenType.THROW)
+        # Parse error type: "fire toad" or just an identifier
+        if self.check(TokenType.IDENTIFIER) and self.peek().value == "fire":
+            self.advance()  # consume 'fire'
+            self.expect(TokenType.IDENTIFIER)  # consume 'toad'
+            error_type = "fire toad"
+        elif self.check(TokenType.IDENTIFIER):
+            error_type = self.advance().value
+        else:
+            error_type = "fire toad"
+        
+        message = self.parse_expression()
+        return ast.ThrowStatement(
+            error_type=error_type,
+            message=message,
             line=token.line,
             column=token.column,
         )
