@@ -130,6 +130,25 @@ def builtin_litho(path: str, content: str) -> None:
         raise IsADirectoryError(f"litho: is a directory: {path}")
 
 
+def builtin_exec(command: str) -> dict:
+    """Execute a shell command and return stdout, stderr, and exit code."""
+    import subprocess
+    try:
+        result = subprocess.run(
+            ["bash", "-c", command],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        return {
+            "stdout": result.stdout,
+            "stderr": result.stderr,
+            "exit_code": result.returncode,
+        }
+    except subprocess.TimeoutExpired:
+        raise TimeoutError(f"exec: command timed out after 30 seconds: {command}")
+
+
 BUILTINS: dict[str, Callable] = {
     "print": builtin_print,
     "echo": builtin_echo,
@@ -147,4 +166,5 @@ BUILTINS: dict[str, Callable] = {
     "sum": builtin_sum,
     "quarry": builtin_quarry,
     "litho": builtin_litho,
+    "exec": builtin_exec,
 }

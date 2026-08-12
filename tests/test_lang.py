@@ -1032,6 +1032,25 @@ class TestInterpreterBuiltins:
         with pytest.raises(FileNotFoundError):
             env.run(Parser(Lexer('quarry("/nonexistent/file.txt")\n').tokenize()).parse())
 
+    def test_exec_basic(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = exec("echo hello")\n').tokenize()).parse())
+        result = env.globals.get("x")
+        assert result["stdout"] == "hello\n"
+        assert result["exit_code"] == 0
+
+    def test_exec_returns_stderr(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = exec("echo error >&2")\n').tokenize()).parse())
+        result = env.globals.get("x")
+        assert result["stderr"] == "error\n"
+
+    def test_exec_nonzero_exit(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = exec("exit 1")\n').tokenize()).parse())
+        result = env.globals.get("x")
+        assert result["exit_code"] == 1
+
 
 class TestInterpreterErrors:
     def test_syntax_error_line_number(self):
