@@ -287,6 +287,12 @@ class Interpreter:
             return left <= right
         if node.op == ">=":
             return left >= right
+        if node.op == "in":
+            if isinstance(right, dict):
+                return left in right
+            if isinstance(right, (list, str)):
+                return left in right
+            raise self.error(f"Cannot use 'in' on {type(right).__name__}", node)
 
         raise RuntimeError(f"Unknown operator: {node.op}", node.line, node.column)
 

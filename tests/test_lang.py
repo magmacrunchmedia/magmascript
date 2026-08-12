@@ -1083,6 +1083,36 @@ class TestInterpreterBuiltins:
             assert result["json"] == {"created": True}
             mock_post.assert_called_once()
 
+    def test_in_operator_list(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = 2 in [1, 2, 3]\n').tokenize()).parse())
+        assert env.globals.get("x") is True
+
+    def test_in_operator_list_not_found(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = 5 in [1, 2, 3]\n').tokenize()).parse())
+        assert env.globals.get("x") is False
+
+    def test_in_operator_string(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "ell" in "hello"\n').tokenize()).parse())
+        assert env.globals.get("x") is True
+
+    def test_in_operator_string_not_found(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "xyz" in "hello"\n').tokenize()).parse())
+        assert env.globals.get("x") is False
+
+    def test_in_operator_dict(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "name" in {"name": "Jake", "age": 30}\n').tokenize()).parse())
+        assert env.globals.get("x") is True
+
+    def test_in_operator_dict_not_found(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "email" in {"name": "Jake", "age": 30}\n').tokenize()).parse())
+        assert env.globals.get("x") is False
+
 
 class TestInterpreterErrors:
     def test_syntax_error_line_number(self):
