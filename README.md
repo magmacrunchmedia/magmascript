@@ -465,13 +465,17 @@ gh_workflows             # GitHub commands
 ## Documentation
 
 Full documentation on the [Wiki](https://github.com/magmacrunchmedia/magmascript/wiki):
-- [Configuration](https://github.com/magmacrunchmedia/magmascript/wiki/Configuration)
 - [MagmaScript Language](https://github.com/magmacrunchmedia/magmascript/wiki/MagmaScript-Language)
+- [Configuration](https://github.com/magmacrunchmedia/magmascript/wiki/Configuration)
 - [MCP Domain](https://github.com/magmacrunchmedia/magmascript/wiki/MCP-Domain)
 - [Pi Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Pi-Domain)
 - [GitHub Domain](https://github.com/magmacrunchmedia/magmascript/wiki/GitHub-Domain)
 - [Scores Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Scores-Domain)
 - [Rights Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Rights-Domain)
+- [Archive Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Archive-Domain)
+- [Last.fm Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Last.fm-Domain)
+- [MusicBrainz Domain](https://github.com/magmacrunchmedia/magmascript/wiki/MusicBrainz-Domain)
+- [Search Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Search-Domain)
 - [Example Scripts](https://github.com/magmacrunchmedia/magmascript/wiki/Example-Scripts)
 - [Architecture](https://github.com/magmacrunchmedia/magmascript/wiki/Architecture)
 
