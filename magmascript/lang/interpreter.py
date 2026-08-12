@@ -102,6 +102,51 @@ class MgsFunction:
         return "<function:anonymous>"
 
 
+@dataclass
+class MgsClass:
+    name: str
+    methods: dict[str, MgsFunction]
+    closure: Environment
+
+    def __call__(self, *args: Any) -> Any:
+        instance = MgsInstance(
+            class_def=self,
+            attributes={},
+        )
+        init = self.methods.get("init")
+        if init:
+            # Only prepend self if not already in params
+            if init.params and init.params[0] == "self":
+                init_with_self = init
+            else:
+                init_with_self = MgsFunction(
+                    params=["self"] + init.params,
+                    body=init.body,
+                    closure=self.closure,
+                    name="init",
+                )
+            init_with_self(instance, *args)
+        return instance
+
+    def __repr__(self) -> str:
+        return f"<class:{self.name}>"
+
+
+@dataclass
+class MgsInstance:
+    class_def: MgsClass
+    attributes: dict[str, Any]
+
+    def __repr__(self) -> str:
+        return f"<{self.class_def.name} instance>"
+
+    def __str__(self) -> str:
+        str_method = self.class_def.methods.get("__str__")
+        if str_method:
+            return str_method(self)
+        return self.__repr__()
+
+
 class MgsString:
     def __init__(self, value: str) -> None:
         self._value = value
@@ -329,6 +374,22 @@ class Interpreter:
         if obj is None:
             raise self.error("Cannot access property on None", node)
 
+        # Handle instance attribute/method access
+        if isinstance(obj, MgsInstance):
+            # First check instance attributes
+            if node.property in obj.attributes:
+                return obj.attributes[node.property]
+            # Then check class methods
+            if node.property in obj.class_def.methods:
+                method = obj.class_def.methods[node.property]
+                def bound_method(*args: Any) -> Any:
+                    return method(obj, *args)
+                return bound_method
+            raise self.error(
+                f"'{obj.class_def.name}' has no attribute '{node.property}'",
+                node,
+            )
+
         if isinstance(obj, dict):
             if node.property in obj:
                 return obj[node.property]
@@ -399,6 +460,22 @@ class Interpreter:
 
         if obj is None:
             raise self.error("Cannot call method on None", node)
+
+        # Handle instance method calls
+        if isinstance(obj, MgsInstance):
+            method = obj.class_def.methods.get(node.method)
+            if method is None:
+                raise self.error(
+                    f"'{obj.class_def.name}' has no method '{node.method}'",
+                    node,
+                )
+            try:
+                result = method(obj, *args)
+                return wrap_result(result)
+            except RuntimeError:
+                raise
+            except TypeError as e:
+                raise self.error(str(e), node, prefix="contemplate")
 
         if isinstance(obj, str):
             mgs_str = MgsString(obj)
@@ -749,6 +826,42 @@ class Interpreter:
             node.column,
             self.filename,
             prefix=node.error_type,
+        )
+
+    def exec_ClassDef(self, node: ast.ClassDef, env: Environment) -> Any:
+        methods = {}
+        for method_node in node.methods:
+            func = MgsFunction(
+                params=method_node.params,
+                body=method_node.body,
+                closure=env,
+                name=method_node.name,
+            )
+            methods[method_node.name] = func
+
+        mgs_class = MgsClass(
+            name=node.name,
+            methods=methods,
+            closure=env,
+        )
+        env.define(node.name, mgs_class)
+        return mgs_class
+
+    def exec_PropertyAssignment(self, node: ast.PropertyAssignment, env: Environment) -> Any:
+        obj = self.execute(node.object, env)
+        value = self.execute(node.value, env)
+
+        if isinstance(obj, MgsInstance):
+            obj.attributes[node.property] = value
+            return value
+
+        if isinstance(obj, dict):
+            obj[node.property] = value
+            return value
+
+        raise self.error(
+            f"Cannot set property on {type(obj).__name__}",
+            node,
         )
 
     def _is_truthy(self, value: Any) -> bool:

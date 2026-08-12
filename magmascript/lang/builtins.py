@@ -67,6 +67,7 @@ def builtin_len(value: Any) -> int:
 
 
 def builtin_type(value: Any) -> str:
+    from magmascript.lang.interpreter import MgsClass, MgsInstance
     if value is None:
         return "none"
     if isinstance(value, bool):
@@ -81,6 +82,10 @@ def builtin_type(value: Any) -> str:
         return "list"
     if isinstance(value, dict):
         return "dict"
+    if isinstance(value, MgsInstance):
+        return value.class_def.name
+    if isinstance(value, MgsClass):
+        return "class"
     if callable(value):
         return "function"
     return "object"

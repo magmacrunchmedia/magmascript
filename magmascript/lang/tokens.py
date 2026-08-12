@@ -64,6 +64,8 @@ class TokenType(Enum):
     TRY = auto()
     HAUNTER = auto()
     THROW = auto()
+    CLASS = auto()
+    SELF = auto()
 
     # Special
     NEWLINE = auto()
@@ -96,6 +98,8 @@ KEYWORDS: dict[str, TokenType] = {
     "try": TokenType.TRY,
     "haunter": TokenType.HAUNTER,
     "throw": TokenType.THROW,
+    "class": TokenType.CLASS,
+    "self": TokenType.SELF,
 }
 
 
