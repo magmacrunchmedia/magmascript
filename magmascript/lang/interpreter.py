@@ -138,6 +138,19 @@ class MgsString:
     def strip(self) -> str:
         return self._value.strip()
 
+    def match(self, pattern: str) -> list[str] | None:
+        """Check if pattern matches at the start of the string. Returns groups or None."""
+        import re
+        m = re.match(pattern, self._value)
+        if m:
+            return list(m.groups()) if m.groups() else [m.group(0)]
+        return None
+
+    def findall(self, pattern: str) -> list[str]:
+        """Find all non-overlapping matches of pattern in the string."""
+        import re
+        return re.findall(pattern, self._value)
+
     def __repr__(self) -> str:
         return self._value
 
