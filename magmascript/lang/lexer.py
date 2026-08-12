@@ -168,6 +168,22 @@ class Lexer:
 
         word = self.source[start:self.pos]
         token_type = KEYWORDS.get(word, TokenType.IDENTIFIER)
+
+        # Special two-word operator: "not in"
+        if word == "not":
+            saved_pos, saved_line, saved_col = self.pos, self.line, self.column
+            # skip whitespace
+            while self.pos < len(self.source) and self.source[self.pos] in " \t":
+                self.advance()
+            if self.pos < len(self.source) and self.source[self.pos:self.pos + 2] == "in":
+                after_in = self.pos + 2
+                if after_in >= len(self.source) or not (self.source[after_in].isalnum() or self.source[after_in] == "_"):
+                    self.advance()  # consume 'i'
+                    self.advance()  # consume 'n'
+                    return Token(TokenType.NOT_IN, "not in", line, col)
+            # restore position
+            self.pos, self.line, self.column = saved_pos, saved_line, saved_col
+
         return Token(token_type, word, line, col)
 
     def handle_newline(self) -> None:

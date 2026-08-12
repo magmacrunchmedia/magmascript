@@ -1183,6 +1183,55 @@ class TestInterpreterBuiltins:
         env.run(Parser(Lexer('x = "abcdef"[::-1]\n').tokenize()).parse())
         assert env.globals.get("x") == "fedcba"
 
+    def test_not_in_operator_list(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = 5 not in [1, 2, 3]\n').tokenize()).parse())
+        assert env.globals.get("x") is True
+
+    def test_not_in_operator_list_found(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = 2 not in [1, 2, 3]\n').tokenize()).parse())
+        assert env.globals.get("x") is False
+
+    def test_not_in_operator_string(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "xyz" not in "hello"\n').tokenize()).parse())
+        assert env.globals.get("x") is True
+
+    def test_not_in_operator_dict(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "missing" not in {"key": 1}\n').tokenize()).parse())
+        assert env.globals.get("x") is True
+
+    def test_default_params(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('fn greet(name, greeting="hello") { return greeting + ", " + name + "!" }\nx = greet("Jake")\n').tokenize()).parse())
+        assert env.globals.get("x") == "hello, Jake!"
+
+    def test_default_params_override(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('fn greet(name, greeting="hello") { return greeting + ", " + name + "!" }\nx = greet("Jake", "hey")\n').tokenize()).parse())
+        assert env.globals.get("x") == "hey, Jake!"
+
+    def test_multi_assignment(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('a, b = 1, 2\n').tokenize()).parse())
+        assert env.globals.get("a") == 1
+        assert env.globals.get("b") == 2
+
+    def test_multi_assignment_three(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x, y, z = 10, 20, 30\n').tokenize()).parse())
+        assert env.globals.get("x") == 10
+        assert env.globals.get("y") == 20
+        assert env.globals.get("z") == 30
+
+    def test_multi_assignment_unpack(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('a, b = [100, 200]\n').tokenize()).parse())
+        assert env.globals.get("a") == 100
+        assert env.globals.get("b") == 200
+
 
 class TestInterpreterErrors:
     def test_syntax_error_line_number(self):

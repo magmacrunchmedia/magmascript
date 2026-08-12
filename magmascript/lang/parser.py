@@ -52,6 +52,7 @@ TOKEN_NAMES: dict[TokenType, str] = {
     TokenType.THROW: "'throw'",
     TokenType.CLASS: "'class'",
     TokenType.SELF: "'self'",
+    TokenType.NOT_IN: "'not in'",
     TokenType.TRUE: "'true'",
     TokenType.FALSE: "'false'",
     TokenType.NONE: "'none'",
@@ -273,45 +274,54 @@ class Parser:
         if self.check(TokenType.IDENTIFIER):
             name = self.advance().value
             self.expect(TokenType.LPAREN)
-            params = self.parse_params()
+            params, defaults = self.parse_params()
             self.expect(TokenType.RPAREN)
             body = self.parse_block()
             return ast.FunctionDef(
                 name=name,
                 params=params,
+                defaults=defaults,
                 body=body,
                 line=token.line,
                 column=token.column,
             )
         else:
             self.expect(TokenType.LPAREN)
-            params = self.parse_params()
+            params, defaults = self.parse_params()
             self.expect(TokenType.RPAREN)
             body = self.parse_block()
             return ast.FunctionDef(
                 name="",
                 params=params,
+                defaults=defaults,
                 body=body,
                 line=token.line,
                 column=token.column,
             )
 
-    def parse_params(self) -> list[str]:
+    def parse_params(self) -> tuple[list[str], dict[str, ast.ASTNode]]:
         params = []
+        defaults = {}
         if not self.check(TokenType.RPAREN):
             # Accept both IDENTIFIER and SELF as parameter names
             token = self.peek()
             if token.type in (TokenType.IDENTIFIER, TokenType.SELF):
                 params.append(self.advance().value)
+                # Check for default value
+                if self.match(TokenType.EQ):
+                    defaults[params[-1]] = self.parse_expression()
             else:
                 raise self.error("Expected parameter name", token)
             while self.match(TokenType.COMMA):
                 token = self.peek()
                 if token.type in (TokenType.IDENTIFIER, TokenType.SELF):
                     params.append(self.advance().value)
+                    # Check for default value
+                    if self.match(TokenType.EQ):
+                        defaults[params[-1]] = self.parse_expression()
                 else:
                     raise self.error("Expected parameter name", token)
-        return params
+        return params, defaults
 
     def parse_return(self) -> ast.ReturnStatement:
         token = self.expect(TokenType.RETURN)
@@ -473,6 +483,30 @@ class Parser:
         expr = self.parse_expression()
 
         if isinstance(expr, ast.Identifier):
+            # Check for multi-assignment: a, b, c = 1, 2, 3
+            if self.match(TokenType.COMMA):
+                names = [expr.name]
+                # Parse additional target names
+                while True:
+                    name_token = self.expect(TokenType.IDENTIFIER)
+                    names.append(name_token.value)
+                    if not self.match(TokenType.COMMA):
+                        break
+                self.expect(TokenType.EQ)
+                # Parse RHS values
+                values = [self.parse_expression()]
+                while self.match(TokenType.COMMA):
+                    if self.check(TokenType.NEWLINE) or self.check(TokenType.EOF):
+                        break
+                    values.append(self.parse_expression())
+                return ast.MultiAssignment(
+                    targets=names,
+                    values=values,
+                    op="=",
+                    line=expr.line,
+                    column=expr.column,
+                )
+
             if self.match(TokenType.EQ):
                 value = self.parse_expression()
                 return ast.Assignment(
@@ -605,11 +639,12 @@ class Parser:
 
     def parse_in(self) -> ast.ASTNode:
         left = self.parse_addition()
-        while self.check(TokenType.IN):
+        while self.check(TokenType.IN) or self.check(TokenType.NOT_IN):
             op = self.advance()
             right = self.parse_addition()
+            op_str = "not in" if op.type == TokenType.NOT_IN else "in"
             left = ast.BinaryOp(
-                op="in",
+                op=op_str,
                 left=left,
                 right=right,
                 line=op.line,
