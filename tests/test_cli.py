@@ -61,6 +61,20 @@ class TestCLI:
         captured = capsys.readouterr()
         assert "[]" in captured.out
 
+    @patch("magmascript.cli._dispatch_run")
+    def test_mgs_shorthand(self, mock_dispatch):
+        with patch("sys.argv", ["magmascript", "hello.mgs"]):
+            main()
+
+        mock_dispatch.assert_called_once_with("hello.mgs", [])
+
+    @patch("magmascript.cli._dispatch_run")
+    def test_mgs_shorthand_with_args(self, mock_dispatch):
+        with patch("sys.argv", ["magmascript", "script.mgs", "arg1", "arg2"]):
+            main()
+
+        mock_dispatch.assert_called_once_with("script.mgs", ["arg1", "arg2"])
+
 
 class TestCLIBrandCommands:
     def test_magma_help(self, capsys):
