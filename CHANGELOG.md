@@ -9,6 +9,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `.mgs` file shorthand: `magmascript hello.mgs` now works without the `run` subcommand
+- Release workflow now triggers on tag push and auto-creates GitHub Releases
+
+## [2.0.1] - 2026-08-12
+
+### Fixed
+- Bug fixes and improvements
+
+## [2.0.0] - 2026-08-12
+
+### Added
+- Domain bridge with 10 domain clients (mcp, pi, gh, media, scores, rights, archive, mb, lastfm, search)
+- `echo()` builtin (alias for print)
+- Regex support: `.match()` and `.findall()` on strings
+- `in` / `not in` operators for lists, strings, and dicts
+- List/string slicing with step support
+- Default function parameters
+- Multi-assignment with list unpacking
+- Classes with `self`, `init`, and methods
+- Import system: `intent`, `intent as`, `intent { ... } from`
+- `try`/`haunter`/`throw` error handling with MagmaCrunch vocabulary
+- 392 tests
+
+### Changed
+- Major language expansion from CLI-only to full scripting language
+- Domain bridge wraps Python clients as MagmaScript-native objects
 
 ## [1.6.0] - 2026-08-09
 
@@ -103,7 +128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Indent-based blocks now work correctly with the lexer
 - Domain bridge no longer wraps callable objects in DataclassWrapper
 
-## [1.1.0]
+## [1.1.0] - 2026-08-08
 
 ### Added
 - Multi-provider media search (Openverse, Pexels, Pixabay, Met Museum, Smithsonian, Archive)
@@ -120,7 +145,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improved error messages across all domains
 - Better caching with atomic writes and per-domain TTLs
 
-## [1.0.0]
+## [1.0.0] - 2026-08-08
 
 ### Added
 - Initial release

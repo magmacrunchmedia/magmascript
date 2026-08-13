@@ -10,8 +10,7 @@ magmascript scores get <game>                # scores for a specific game
 magmascript scores report                    # markdown report
 magmascript scores report --discord          # Discord JSON payload
 magmascript scores reset <game>              # reset one game (backup created)
-magmascript scores player <name>             # player statistics
-magmascript scores history                   # score history
+magmascript scores reset-all                 # reset all games (backup created)
 ```
 
 ## Configuration
