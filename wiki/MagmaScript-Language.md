@@ -5,11 +5,14 @@ MagmaScript is a Python-inspired mini language with MagmaCrunch personality. Wri
 ## Quick Start
 
 ```bash
-# Run a script
-magmascript run scripts/examples/hello.mgs
+# Run a script (shorthand)
+magmascript scripts/examples/hello.mgs
 
 # Run with arguments
-magmascript run scripts/examples/top-scores.mgs tetris
+magmascript scripts/examples/top-scores.mgs tetris
+
+# Or use the explicit run subcommand
+magmascript run scripts/examples/hello.mgs
 
 # Start interactive REPL
 magmascript repl
@@ -207,6 +210,7 @@ print(result.exit_code)
 | Function | Description |
 |----------|-------------|
 | `print(...)` | Print to stdout |
+| `echo(...)` | Print to stdout (alias for print) |
 | `len(x)` | Length of string, list, or dict |
 | `type(x)` | Type name as string |
 | `range(n)`, `range(start, stop)`, `range(start, stop, step)` | Generate integer ranges |

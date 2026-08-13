@@ -22,13 +22,13 @@ Working example scripts in `scripts/examples/`:
 ## Running Examples
 
 ```bash
-# Basic usage
-magmascript run scripts/examples/hello.mgs
+# Basic usage (shorthand)
+magmascript scripts/examples/hello.mgs
 
 # With arguments
-magmascript run scripts/examples/top-scores.mgs tetris
+magmascript scripts/examples/top-scores.mgs tetris
 
-# From the project root
+# Or use the explicit run subcommand
 magmascript run scripts/examples/fibonacci.mgs
 ```
 

@@ -50,11 +50,14 @@ Write `.mgs` scripts using a Python-inspired mini language with direct access to
 ### Quick Start
 
 ```bash
-# Run a script
-magmascript run scripts/examples/hello.mgs
+# Run a script (shorthand)
+magmascript scripts/examples/hello.mgs
 
 # Run with arguments
-magmascript run scripts/examples/top-scores.mgs tetris
+magmascript scripts/examples/top-scores.mgs tetris
+
+# Or use the explicit run subcommand
+magmascript run scripts/examples/hello.mgs
 
 # Start interactive REPL
 magmascript repl
@@ -254,6 +257,7 @@ if "xyz" not in "hello" { ... }
 | Function | Description |
 |----------|-------------|
 | `print(...)` | Print to stdout |
+| `echo(...)` | Print to stdout (alias for print) |
 | `len(x)` | Length of string, list, or dict |
 | `type(x)` | Type name as string |
 | `range(n)`, `range(start, stop)`, `range(start, stop, step)` | Generate integer ranges |
@@ -303,6 +307,32 @@ See `scripts/examples/` for working examples:
 | `real-domains.mgs` | Test real domain connections (MCP search, scoreboards, games) |
 | `domain-example.mgs` | Domain object overview and usage patterns |
 
+### REPL
+
+Start an interactive MagmaScript session:
+
+```bash
+magmascript repl
+```
+
+**Features:**
+- Syntax highlighting via Pygments
+- Tab completion for keywords, builtins, domain methods, and user-defined variables
+- Persistent history across sessions (`~/.magmascript_history`)
+- Multiline editing with proper continuation prompts
+- Dot-commands:
+
+| Command | Description |
+|---------|-------------|
+| `.help` | Show available commands |
+| `.exit` | Exit the REPL |
+| `.clear` | Clear the screen |
+| `.ast` | Show AST for last expression |
+| `.magma` | System status dashboard |
+| `.crunch <target>` | Run batch pipeline |
+| `.texas <target>` | Full/heavy operation |
+| `.toast <target>` | Burn/clear caches |
+
 ## Domains
 
 ### MCP Domain — MusicBrainz, scores, Discogs, write operations
@@ -350,6 +380,7 @@ magmascript scores reset tetris              # reset one game (backup created)
 ```bash
 magmascript archive check-format             # validate HTML formatting
 magmascript archive bake-cache               # inline MusicBrainz cache into pages
+magmascript archive generate-stubs           # generate stub HTML for new entities
 ```
 
 ### MusicBrainz Domain — MusicBrainz API client
@@ -476,6 +507,7 @@ Full documentation on the [Wiki](https://github.com/magmacrunchmedia/magmascript
 - [Last.fm Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Last.fm-Domain)
 - [MusicBrainz Domain](https://github.com/magmacrunchmedia/magmascript/wiki/MusicBrainz-Domain)
 - [Search Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Search-Domain)
+- [Media Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Media-Domain)
 - [Example Scripts](https://github.com/magmacrunchmedia/magmascript/wiki/Example-Scripts)
 - [Architecture](https://github.com/magmacrunchmedia/magmascript/wiki/Architecture)
 
