@@ -71,6 +71,21 @@ jobs:
             echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Wait for PyPI availability
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          echo "Waiting for magmascript $VERSION to be available on PyPI..."
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://pypi.org/pypi/magmascript/$VERSION/json")
+            if [ "$STATUS" = "200" ]; then
+              echo "Package available on PyPI (attempt $i)"
+              exit 0
+            fi
+            echo "  Not yet (HTTP $STATUS), waiting 30s... (attempt $i/10)"
+            sleep 30
+          done
+          echo "Warning: Package may not be available yet, proceeding anyway"
+
       - name: Generate updated formula
         run: python magmascript/scripts/update-formula.py ${{ steps.version.outputs.version }} tap/Formula/magmascript.rb
 

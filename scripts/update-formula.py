@@ -32,7 +32,7 @@ def sha256_of_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def download_sdist(version: str, dest: Path, retries: int = 3, delay: int = 10) -> Path:
+def download_sdist(version: str, dest: Path, retries: int = 5, delay: int = 15) -> Path:
     filename = f"magmascript-{version}.tar.gz"
     url = f"{PYPI_SOURCE}/{filename}"
     for attempt in range(retries):
