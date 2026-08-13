@@ -34,6 +34,7 @@ def usage():
     print("""magmascript — scripting toolkit with domain-first subcommands
 
 Usage:
+    magmascript <script.mgs> [args...]     Run a MagmaScript file directly
     magmascript <domain> <action> [args...]
 
 Domains:
@@ -173,6 +174,12 @@ def main():
     domain = args[0]
     action = args[1] if len(args) > 1 else ""
     rest = args[2:]
+
+    # Auto-detect .mgs files: magmascript hello.mgs
+    if domain.endswith(".mgs"):
+        script_args = [action] + rest if action else rest
+        _dispatch_run(domain, script_args)
+        return
 
     # Parse output format
     fmt = "table"
