@@ -15,6 +15,8 @@ import json
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.error
 from pathlib import Path
 from urllib.request import urlretrieve
 
@@ -30,12 +32,21 @@ def sha256_of_file(path: Path) -> str:
     return h.hexdigest()
 
 
-def download_sdist(version: str, dest: Path) -> Path:
+def download_sdist(version: str, dest: Path, retries: int = 3, delay: int = 10) -> Path:
     filename = f"magmascript-{version}.tar.gz"
     url = f"{PYPI_SOURCE}/{filename}"
-    print(f"Downloading {url} ...")
-    path, _ = urlretrieve(url, dest / filename)
-    return Path(path)
+    for attempt in range(retries):
+        print(f"Downloading {url} (attempt {attempt + 1}/{retries}) ...")
+        try:
+            path, _ = urlretrieve(url, dest / filename)
+            return Path(path)
+        except urllib.error.HTTPError as e:
+            if e.code == 404 and attempt < retries - 1:
+                wait = delay * (2 ** attempt)
+                print(f"  Not available yet (404), waiting {wait}s ...")
+                time.sleep(wait)
+            else:
+                raise
 
 
 def resolve_dependencies(version: str, sdist_path: Path) -> list[dict]:
