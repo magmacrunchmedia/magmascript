@@ -2,7 +2,7 @@
 
 __version__ = "2.1.0"
 
-from magmascript.core.config import Config, GHConfig, MediaConfig, PIConfig, get_config, load_config, set_config
+from magmascript.core.config import Config, GHConfig, MediaConfig, MC1Config, PIConfig, get_config, load_config, set_config
 from magmascript.core.registry import get_domain, list_domains, register_domain
 from magmascript.core.rpc import RPCClient, RPCError, RPCResponse
 from magmascript.core.runner import CommandRunner
@@ -14,6 +14,7 @@ from magmascript import domains  # noqa: F401
 # Convenience: expose clients at top level
 from magmascript.domains.mcp import MCPClient
 from magmascript.domains.pi import PIClient
+from magmascript.domains.mc1 import MC1Client
 from magmascript.domains.gh import GHClient
 from magmascript.domains.media import MediaClient
 from magmascript.domains.rights import RightsClient
@@ -27,6 +28,7 @@ __all__ = [
     "Config",
     "GHClient",
     "GHConfig",
+    "MC1Client",
     "MCPClient",
     "MediaClient",
     "MediaConfig",
