@@ -32,6 +32,14 @@ class PIConfig:
 
 
 @dataclass
+class MC1Config:
+    """MC1 Windows PC SSH configuration."""
+
+    host: str = "100.75.220.87"
+    user: str = "magma"
+
+
+@dataclass
 class GHConfig:
     """GitHub API configuration."""
 
@@ -79,6 +87,7 @@ class Config:
 
     mcp: MCPConfig = field(default_factory=MCPConfig)
     pi: PIConfig = field(default_factory=PIConfig)
+    mc1: MC1Config = field(default_factory=MC1Config)
     gh: GHConfig = field(default_factory=GHConfig)
     media: MediaConfig = field(default_factory=MediaConfig)
     cache: CacheConfig = field(default_factory=CacheConfig)
@@ -112,6 +121,7 @@ def load_config(*, config_path: Path | None = None, env_prefix: str = "MAGMA_") 
     toml = _load_toml(cfg_file)
     mcp_section = toml.get("mcp", {})
     pi_section = toml.get("pi", {})
+    mc1_section = toml.get("mc1", {})
     gh_section = toml.get("gh", {})
     media_section = toml.get("media", {})
     cache_section = toml.get("cache", {})
@@ -128,6 +138,10 @@ def load_config(*, config_path: Path | None = None, env_prefix: str = "MAGMA_") 
         pi=PIConfig(
             host=os.environ.get(f"{env_prefix}PI_HOST", pi_section.get("host", "192.168.1.16")),
             user=os.environ.get(f"{env_prefix}PI_USER", pi_section.get("user", "jake")),
+        ),
+        mc1=MC1Config(
+            host=os.environ.get(f"{env_prefix}MC1_HOST", mc1_section.get("host", "100.75.220.87")),
+            user=os.environ.get(f"{env_prefix}MC1_USER", mc1_section.get("user", "magma")),
         ),
         gh=GHConfig(
             token=os.environ.get(f"{env_prefix}GH_TOKEN")

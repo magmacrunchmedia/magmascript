@@ -3,6 +3,7 @@
 # Importing this package triggers domain registration
 from magmascript.domains import mcp  # noqa: F401
 from magmascript.domains import pi  # noqa: F401
+from magmascript.domains import mc1  # noqa: F401
 from magmascript.domains import gh  # noqa: F401
 from magmascript.domains import media  # noqa: F401
 from magmascript.domains import scores  # noqa: F401
@@ -12,4 +13,4 @@ from magmascript.domains import mb  # noqa: F401
 from magmascript.domains import lastfm  # noqa: F401
 from magmascript.domains import search  # noqa: F401
 
-__all__ = ["mcp", "pi", "gh", "media", "scores", "rights", "archive", "mb", "lastfm", "search"]
+__all__ = ["mcp", "pi", "mc1", "gh", "media", "scores", "rights", "archive", "mb", "lastfm", "search"]
