@@ -358,6 +358,14 @@ magmascript pi backup musicbrainz            # backup + commit to GitHub
 magmascript pi traffic                       # nginx traffic analysis
 ```
 
+### MC1 Domain — Windows PC management (via SSH)
+```bash
+magmascript mc1 status                        # all running Windows services
+magmascript mc1 info                          # uptime, memory, CPU, disk
+magmascript mc1 restart OllamaSvc             # restart a Windows service
+magmascript mc1 processes                     # top processes by CPU
+```
+
 ### GitHub Domain — Direct API access
 ```bash
 magmascript gh workflows                     # all workflow statuses
