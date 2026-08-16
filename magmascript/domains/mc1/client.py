@@ -73,7 +73,11 @@ class MC1Client:
             'Write-Host \\"UPTIME:$((Get-Date) - $os.LastBootUpTime)\\"; '
             'Write-Host \\"MEMORY:$([math]::Round($os.TotalVisibleMemorySize/1MB, 1))GB/$([math]::Round(($os.TotalVisibleMemorySize - $os.FreePhysicalMemory)/1MB, 1))GB\\"; '
             'Write-Host \\"CPU:$($cpu.LoadPercentage)%\\"; '
-            'Write-Host \\"DISK:$([math]::Round($disk.FreeSpace/$disk.Size*100, 1))% free\\"'
+            'Write-Host \\"DISK:$([math]::Round($disk.FreeSpace/$disk.Size*100, 1))% free\\"; '
+            'Write-Host \\"DISK_FREE_GB:$([math]::Round($disk.FreeSpace/1GB, 1))GB\\"; '
+            'Write-Host \\"CPU_NAME:$($cpu.Name)\\"; '
+            'Write-Host \\"CPU_CORES:$($cpu.NumberOfCores)\\"; '
+            'Write-Host \\"OS_VERSION:$($os.Caption)\\"'
             '"'
         )
         return parse_system_info(stdout)
