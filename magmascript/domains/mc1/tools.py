@@ -29,6 +29,18 @@ class MC1SystemInfo:
     os_version: str = ""
 
 
+@dataclass
+class MC1PowerSettings:
+    """MC1 power management settings."""
+
+    sleep_timeout_ac: int  # minutes (0 = never)
+    sleep_timeout_dc: int  # minutes (0 = never)
+    hibernate_timeout_ac: int  # minutes (0 = never)
+    hibernate_timeout_dc: int  # minutes (0 = never)
+    power_mode: str  # "always-on" or "sleep"
+    hibernate_enabled: bool = True
+
+
 # ---------------------------------------------------------------------------
 # Uptime formatting
 # ---------------------------------------------------------------------------
@@ -125,3 +137,44 @@ def parse_system_info(text: str) -> MC1SystemInfo:
         info["uptime"] = _format_uptime(info["uptime"])
 
     return MC1SystemInfo(**info)
+
+
+def parse_power_settings(text: str) -> MC1PowerSettings:
+    """Parse the output of the power settings command.
+
+    Expected format:
+        SLEEP_AC:30
+        SLEEP_DC:15
+        HIBERNATE_AC:0
+        HIBERNATE_DC:0
+        POWER_MODE:sleep
+        HIBERNATE_ENABLED:True
+    """
+    info = {
+        "sleep_timeout_ac": 30,
+        "sleep_timeout_dc": 15,
+        "hibernate_timeout_ac": 0,
+        "hibernate_timeout_dc": 0,
+        "power_mode": "sleep",
+        "hibernate_enabled": True,
+    }
+    for line in text.splitlines():
+        line = line.strip()
+        if ":" in line:
+            key, val = line.split(":", 1)
+            key = key.lower().strip()
+            val = val.strip()
+            if key == "sleep_ac":
+                info["sleep_timeout_ac"] = int(val) if val.isdigit() else 0
+            elif key == "sleep_dc":
+                info["sleep_timeout_dc"] = int(val) if val.isdigit() else 0
+            elif key == "hibernate_ac":
+                info["hibernate_timeout_ac"] = int(val) if val.isdigit() else 0
+            elif key == "hibernate_dc":
+                info["hibernate_timeout_dc"] = int(val) if val.isdigit() else 0
+            elif key == "power_mode":
+                info["power_mode"] = val if val in ("always-on", "sleep") else "sleep"
+            elif key == "hibernate_enabled":
+                info["hibernate_enabled"] = val.lower() == "true"
+
+    return MC1PowerSettings(**info)
