@@ -47,30 +47,40 @@ class MC1PowerSettings:
 
 
 def _format_uptime(raw: str) -> str:
-    """Parse .NET TimeSpan string (e.g. '1.03:05:36.7441121') into human-readable form.
+    """Parse .NET TimeSpan string into human-readable form.
 
-    Format: 'D.HH:MM:SS.fffffff' → '1 day, 3 hours, 5 minutes'
+    Two formats from PowerShell:
+      >1 day:  '1.03:05:36.7441121'  (dot = day separator)
+      <1 day:  '07:33:06.0140847'    (dot = fractional seconds)
     """
     try:
-        # Split on '.' for days, then ':' for time
         parts = raw.split(".", 1)
-        days = int(parts[0]) if parts[0].isdigit() else 0
-
-        if len(parts) > 1:
-            time_parts = parts[1].split(":")
-            hours = int(time_parts[0]) if len(time_parts) > 0 else 0
-            minutes = int(time_parts[1]) if len(time_parts) > 1 else 0
+        if ":" in parts[0]:
+            # No day component: "07:33:06.0140847"
+            time_parts = parts[0].split(":")
+            days = 0
         else:
-            hours = 0
-            minutes = 0
+            # Day component: "1.03:05:36.7441121"
+            days = int(parts[0]) if parts[0].isdigit() else 0
+            time_parts = parts[1].split(":") if len(parts) > 1 else []
+
+        hours = int(time_parts[0]) if len(time_parts) > 0 else 0
+        minutes = int(time_parts[1]) if len(time_parts) > 1 else 0
+        # Seconds may have fractional part attached: "45.1234567"
+        sec_str = time_parts[2].split(".")[0] if len(time_parts) > 2 else "0"
+        seconds = int(sec_str) if sec_str.isdigit() else 0
 
         segments = []
         if days > 0:
             segments.append(f"{days} day{'s' if days != 1 else ''}")
         if hours > 0:
             segments.append(f"{hours} hour{'s' if hours != 1 else ''}")
-        if minutes > 0 or not segments:
+        if minutes > 0:
             segments.append(f"{minutes} min{'s' if minutes != 1 else ''}")
+        if seconds > 0:
+            segments.append(f"{seconds}s")
+        if not segments:
+            segments.append("0s")
 
         return ", ".join(segments)
     except (ValueError, IndexError):
