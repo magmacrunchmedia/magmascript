@@ -11,8 +11,8 @@
   // ----------------------------------------------------------
 
   const PYODIDE_CDN = "https://cdn.jsdelivr.net/pyodide/v0.25.1/full/pyodide.js";
-  const LANG_FILE_CONTENTS = {
-    "__init__.py": `from magmascript.lang.tokens import TokenType, Token, KEYWORDS
+const LANG_FILE_CONTENTS = {
+  "__init__.py": `from magmascript.lang.tokens import TokenType, Token, KEYWORDS
 from magmascript.lang.lexer import Lexer
 from magmascript.lang.ast_nodes import *
 from magmascript.lang.parser import Parser
@@ -33,7 +33,7 @@ __all__ = [
     "create_domain_proxies",
 ]
 `,
-    "tokens.py": `from __future__ import annotations
+  "tokens.py": `from __future__ import annotations
 
 from enum import Enum, auto
 from dataclasses import dataclass
@@ -149,7 +149,7 @@ class Token:
     def __repr__(self) -> str:
         return f"Token({self.type.name}, {self.value!r}, line={self.line})"
 `,
-    "ast_nodes.py": `from __future__ import annotations
+  "ast_nodes.py": `from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
@@ -380,7 +380,7 @@ class MultiAssignment(ASTNode):
     values: list[ASTNode] = field(default_factory=list)
     op: str = "="
 `,
-    "lexer.py": `from __future__ import annotations
+  "lexer.py": `from __future__ import annotations
 
 from magmascript.lang.tokens import Token, TokenType, KEYWORDS
 
@@ -410,7 +410,7 @@ class LexerError(Exception):
             parts.append(f"  {padding} | {caret}")
 
         parts.append(self.message)
-        return "\n".join(parts)
+        return "\\n".join(parts)
 
 
 class Lexer:
@@ -429,7 +429,7 @@ class Lexer:
         return LexerError(message, self.line, self.column, source_line, self.filename)
 
     def _get_source_line(self, line_num: int) -> str | None:
-        lines = self.source.split("\n")
+        lines = self.source.split("\\n")
         if 1 <= line_num <= len(lines):
             return lines[line_num - 1]
         return None
@@ -442,7 +442,7 @@ class Lexer:
     def advance(self) -> str:
         ch = self.source[self.pos]
         self.pos += 1
-        if ch == "\n":
+        if ch == "\\n":
             self.line += 1
             self.column = 1
         else:
@@ -461,12 +461,12 @@ class Lexer:
         return None
 
     def skip_whitespace(self) -> None:
-        while self.pos < len(self.source) and self.source[self.pos] in " \t\r":
+        while self.pos < len(self.source) and self.source[self.pos] in " \\t\\r":
             self.advance()
 
     def skip_comment(self) -> bool:
         if self.pos + 1 < len(self.source) and self.source[self.pos:self.pos + 2] == "//":
-            while self.pos < len(self.source) and self.source[self.pos] != "\n":
+            while self.pos < len(self.source) and self.source[self.pos] != "\\n":
                 self.advance()
             return True
         return False
@@ -478,22 +478,22 @@ class Lexer:
         has_interpolation = False
 
         while self.pos < len(self.source) and self.source[self.pos] != quote:
-            if self.source[self.pos] == "\\":
+            if self.source[self.pos] == "\\\\":
                 self.advance()
                 if self.pos < len(self.source):
                     esc = self.advance()
                     if esc == "n":
-                        parts.append("\n")
+                        parts.append("\\n")
                     elif esc == "t":
-                        parts.append("\t")
-                    elif esc == "\\":
-                        parts.append("\\")
+                        parts.append("\\t")
+                    elif esc == "\\\\":
+                        parts.append("\\\\")
                     elif esc == quote:
                         parts.append(quote)
                     elif esc == "{":
                         parts.append("{")
                     else:
-                        parts.append("\\" + esc)
+                        parts.append("\\\\" + esc)
             elif self.source[self.pos] == "{":
                 has_interpolation = True
                 parts.append(self.advance())
@@ -555,7 +555,7 @@ class Lexer:
         if word == "not":
             saved_pos, saved_line, saved_col = self.pos, self.line, self.column
             # skip whitespace
-            while self.pos < len(self.source) and self.source[self.pos] in " \t":
+            while self.pos < len(self.source) and self.source[self.pos] in " \\t":
                 self.advance()
             if self.pos < len(self.source) and self.source[self.pos:self.pos + 2] == "in":
                 after_in = self.pos + 2
@@ -579,7 +579,7 @@ class Lexer:
             return
 
         current_indent = 0
-        while self.pos < len(self.source) and self.source[self.pos] in " \t":
+        while self.pos < len(self.source) and self.source[self.pos] in " \\t":
             current_indent += 1
             self.advance()
 
@@ -604,16 +604,16 @@ class Lexer:
 
             line, col = self.line, self.column
 
-            if ch == "\n":
+            if ch == "\\n":
                 if self.paren_depth == 0:
-                    self.tokens.append(Token(TokenType.NEWLINE, "\\n", line, col))
+                    self.tokens.append(Token(TokenType.NEWLINE, "\\\\n", line, col))
                     self.handle_newline()
                 else:
                     self.advance()
                 continue
 
             if ch == "#":
-                while self.pos < len(self.source) and self.source[self.pos] != "\n":
+                while self.pos < len(self.source) and self.source[self.pos] != "\\n":
                     self.advance()
                 continue
 
@@ -676,7 +676,7 @@ class Lexer:
             elif ch == "/":
                 self.advance()
                 if self.match("/"):
-                    while self.pos < len(self.source) and self.source[self.pos] != "\n":
+                    while self.pos < len(self.source) and self.source[self.pos] != "\\n":
                         self.advance()
                 else:
                     self.tokens.append(Token(TokenType.SLASH, "/", line, col))
@@ -733,7 +733,7 @@ class Lexer:
 def tokenize(source: str) -> list[Token]:
     return Lexer(source).tokenize()
 `,
-    "parser.py": `from __future__ import annotations
+  "parser.py": `from __future__ import annotations
 
 from magmascript.lang.tokens import Token, TokenType, KEYWORDS
 from magmascript.lang import ast_nodes as ast
@@ -805,7 +805,7 @@ def token_display(token: Token) -> str:
     if token.type == TokenType.STRING:
         kind, value = token.value
         preview = value[:20] + "..." if len(value) > 20 else value
-        return f"string \"{preview}\""
+        return f"string \\"{preview}\\""
     return name
 
 
@@ -833,7 +833,7 @@ class ParseError(Exception):
             parts.append(f"  {padding} | {caret}")
 
         parts.append(self.message)
-        return "\n".join(parts)
+        return "\\n".join(parts)
 
 
 class Parser:
@@ -854,7 +854,7 @@ class Parser:
     def _get_source_line(self, line_num: int) -> str | None:
         if self.source is None:
             return None
-        lines = self.source.split("\n")
+        lines = self.source.split("\\n")
         if 1 <= line_num <= len(lines):
             return lines[line_num - 1]
         return None
@@ -1692,7 +1692,7 @@ def parse(source: str) -> ast.Program:
     parser = Parser(tokens)
     return parser.parse()
 `,
-    "interpreter.py": `from __future__ import annotations
+  "interpreter.py": `from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -1741,7 +1741,7 @@ class RuntimeError(Exception):
             for frame in self.call_stack:
                 parts.append(f"  {frame}")
 
-        return "\n".join(parts)
+        return "\\n".join(parts)
 
 
 class BreakSignal(Exception):
@@ -1946,7 +1946,7 @@ class Interpreter:
     def _get_source_line(self, line_num: int) -> str | None:
         if self.source is None:
             return None
-        lines = self.source.split("\n")
+        lines = self.source.split("\\n")
         if 1 <= line_num <= len(lines):
             return lines[line_num - 1]
         return None
@@ -2507,7 +2507,7 @@ class Interpreter:
         if namespace.endswith(".mgs"):
             namespace = namespace[:-4]
         # If the namespace is a full path, extract just the filename
-        if "/" in namespace or "\\" in namespace:
+        if "/" in namespace or "\\\\" in namespace:
             from pathlib import Path
             namespace = Path(namespace).stem
         
@@ -2641,7 +2641,7 @@ def run(source: str, script_args: list[str] | None = None) -> Any:
     _thread_interpreter = interpreter
     return interpreter.run(program)
 `,
-    "environment.py": `from __future__ import annotations
+  "environment.py": `from __future__ import annotations
 
 from dataclasses import dataclass, field
 from typing import Any
@@ -2697,7 +2697,7 @@ class Environment:
             names.extend(self.parent._collect_names())
         return names
 `,
-    "builtins.py": `from __future__ import annotations
+  "builtins.py": `from __future__ import annotations
 
 from typing import Any, Callable
 
@@ -2917,7 +2917,7 @@ BUILTINS: dict[str, Callable] = {
     "exec": builtin_exec,
 }
 `,
-    "domain_bridge.py": `from __future__ import annotations
+  "domain_bridge.py": `from __future__ import annotations
 
 from dataclasses import fields, is_dataclass
 from typing import Any
@@ -3032,7 +3032,7 @@ def create_domain_proxies() -> dict[str, DomainProxy]:
 
     return proxies
 `,
-    "util.py": `from __future__ import annotations
+  "util.py": `from __future__ import annotations
 
 
 def levenshtein(a: str, b: str) -> int:
@@ -3077,7 +3077,7 @@ def suggest(name: str, candidates: list[str], max_distance: int = 2) -> str | No
         return best
     return None
 `,
-  };
+};
   const EXAMPLES = [
     "hello",
     "fibonacci",
