@@ -1,0 +1,42 @@
+// slicing.mgs — List and string slicing
+
+// List slicing
+numbers = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+print(f"All: {numbers}")
+
+// Slice [start:end]
+print(f"[2:5]: {numbers[2:5]}")
+print(f"[0:3]: {numbers[0:3]}")
+
+// Slice from start
+print(f"[:4]: {numbers[:4]}")
+
+// Slice to end
+print(f"[6:]: {numbers[6:]}")
+
+// Negative indexing
+print(f"Last 3: {numbers[-3:]}")
+print(f"First 3: {numbers[:3]}")
+
+// Reverse with [::-1]
+print(f"Reversed: {numbers[::-1]}")
+
+// Every other element
+print(f"Every 2nd: {numbers[::2]}")
+
+// String slicing
+message = "MagmaScript"
+print(f"Full: {message}")
+print(f"First 5: {message[:5]}")
+print(f"Last 6: {message[-6:]}")
+print(f"Reversed: {message[::-1]}")
+print(f"Every 2nd: {message[::2]}")
+
+// Slice assignment pattern — build a new list
+original = [10, 20, 30, 40, 50]
+front = original[:2]
+back = original[3:]
+print(f"Front: {front}")
+print(f"Back: {back}")
+merged = front + back
+print(f"Merged: {merged}")

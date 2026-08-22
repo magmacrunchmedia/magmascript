@@ -1,0 +1,21 @@
+// hello.mgs — Welcome to MagmaScript!
+
+print("Hello, MagmaScript!")
+
+// Variables
+name = "World"
+greeting = f"Hello, {name}!"
+print(greeting)
+
+// Functions
+double = fn(x) { x * 2 }
+print(double(21))
+
+// Arrow functions
+triple = x -> x * 3
+print(triple(7))
+
+// String interpolation with expressions
+lang = "MagmaScript"
+version = 2
+print(f"{lang} v{version} — let's go!")

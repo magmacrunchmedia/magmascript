@@ -1,0 +1,44 @@
+// multi-assignment.mgs — Tuple unpacking and multi-assignment
+
+// Basic multi-assignment
+a, b = 1, 2
+print(f"a={a}, b={b}")
+
+// Three variables
+x, y, z = 10, 20, 30
+print(f"x={x}, y={y}, z={z}")
+
+// Swap values
+a, b = b, a
+print(f"After swap: a={a}, b={b}")
+
+// List unpacking
+names = ["Alice", "Bob", "Charlie"]
+first, second, third = names
+print(f"{first}, {second}, {third}")
+
+// Use in a loop — iterate pairs
+points = [[0, 1], [2, 3], [4, 5]]
+for point in points {
+    print(f"Point: ({point[0]}, {point[1]})")
+}
+
+// Function that returns multiple values via list
+fn min_max(lst) {
+    lo = lst[0]
+    hi = lst[0]
+    for item in lst {
+        if item < lo { lo = item }
+        if item > hi { hi = item }
+    }
+    return [lo, hi]
+}
+
+data = [5, 2, 8, 1, 9, 3]
+result = min_max(data)
+print(f"min={result[0]}, max={result[1]}")
+
+// Nested unpacking
+matrix = [[1, 2], [3, 4]]
+a, b = matrix
+print(f"Row 1: {a}, Row 2: {b}")

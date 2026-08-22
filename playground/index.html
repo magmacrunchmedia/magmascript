@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>magmascript playground</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Courier+Prime:wght@400;700&display=swap">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1><code>magmascript</code> playground</h1>
+    <div class="controls">
+      <select id="example-select"></select>
+      <button id="run" class="primary" title="Ctrl+Enter">&#9654; Run</button>
+      <button id="reset" title="Reset editor to example default">Reset</button>
+      <button id="about-btn" title="About magmascript">About</button>
+    </div>
+  </header>
+
+  <div id="loading-bar" class="loading-bar"></div>
+
+  <nav class="tool-nav">
+    <a href="../" class="back-link">&larr; magmacrunch tools</a>
+  </nav>
+
+  <main>
+    <div id="editor-panel"></div>
+    <div id="divider"></div>
+    <div id="output-panel">
+      <div id="output-content">
+        <div class="empty-state">
+          <span>Loading Pyodide interpreter...</span>
+          <code>First run may take a few seconds</code>
+        </div>
+      </div>
+      <div id="console-log"></div>
+    </div>
+  </main>
+
+  <footer>
+    <span id="status-interp">loading...</span>
+    <span id="status-example">example: &mdash;</span>
+    <span id="status-ready"><span class="dot loading"></span>initializing</span>
+  </footer>
+
+  <dialog id="about-modal">
+    <div class="modal-header">
+      <h2><code>magmascript</code></h2>
+      <button class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>A Python-inspired mini language with a tree-walk interpreter. Write .mgs scripts, run them in your browser.</p>
+
+      <h3>Install</h3>
+      <p class="modal-label">pip:</p>
+      <pre><code>pip install magmascript</code></pre>
+
+      <h3>Features</h3>
+      <ul style="padding-left:1.25rem;margin:0 0 .75rem;">
+        <li>Variables, functions, arrow functions</li>
+        <li>Lists, dicts, list comprehensions</li>
+        <li>String interpolation (f-strings)</li>
+        <li>Classes with methods</li>
+        <li>Control flow: if/else, for, while</li>
+        <li>Slicing: <code>[1:3]</code>, <code>[::-1]</code></li>
+        <li>Error handling: try/haunter, throw fire toad</li>
+      </ul>
+
+      <h3>Links</h3>
+      <div class="modal-links">
+        <a href="https://github.com/magmacrunchmedia/magmascript" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://pypi.org/project/magmascript/" target="_blank" rel="noopener">PyPI</a>
+        <a href="https://magmacrunch.com" target="_blank" rel="noopener">magmacrunch.com</a>
+      </div>
+
+      <p class="modal-license">MIT &middot; Copyright 2026 magmacrunch media</p>
+    </div>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

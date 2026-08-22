@@ -1,0 +1,62 @@
+// classes.mgs — Classes, methods, instances
+
+// Define a class
+class Dog {
+    fn init(self, name, breed) {
+        self.name = name
+        self.breed = breed
+        self.tricks = []
+    }
+
+    fn bark(self) {
+        print(f"{self.name} says: Woof!")
+    }
+
+    fn learn(self, trick) {
+        self.tricks = self.tricks + [trick]
+    }
+
+    fn show_tricks(self) {
+        if len(self.tricks) == 0 {
+            print(f"{self.name} knows no tricks yet")
+        } else {
+            print(f"{self.name} knows: {", ".join(self.tricks)}")
+        }
+    }
+}
+
+// Create instances
+rex = Dog("Rex", "German Shepherd")
+buddy = Dog("Buddy", "Golden Retriever")
+
+rex.bark()
+buddy.bark()
+
+// Call methods
+rex.learn("sit")
+rex.learn("shake")
+rex.learn("roll over")
+rex.show_tricks()
+buddy.show_tricks()
+
+// Another class — a simple counter
+class Counter {
+    fn init(self, start) {
+        self.count = start
+    }
+
+    fn increment(self) {
+        self.count = self.count + 1
+    }
+
+    fn value(self) {
+        return self.count
+    }
+}
+
+c = Counter(10)
+print(f"Starting at: {c.value()}")
+for i in range(5) {
+    c.increment()
+}
+print(f"After 5 increments: {c.value()}")

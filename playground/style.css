@@ -1,0 +1,330 @@
+:root { color-scheme: dark; }
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font: 14px/1.5 'Courier Prime', ui-monospace, SFMono-Regular, Menlo, monospace;
+  background: #14141b; color: #e8e6f0;
+  display: flex; flex-direction: column;
+  height: 100vh; overflow: hidden;
+}
+
+/* ── Header ───────────────────────────────────────────── */
+
+header {
+  display: flex; align-items: center; gap: 1rem;
+  padding: .6rem 1.25rem;
+  border-bottom: 1px solid #33304a;
+  background: #1c1b26;
+  flex-shrink: 0;
+}
+
+header h1 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 12px; font-weight: 400; white-space: nowrap;
+  letter-spacing: 0.05em;
+}
+header h1 code { color: #ff6b6b; }
+
+.controls {
+  display: flex; align-items: center; gap: .6rem;
+  flex-wrap: wrap;
+}
+
+/* ── Selects ──────────────────────────────────────────── */
+
+.controls select {
+  font: 12px/1 'Courier Prime', monospace;
+  color: #e8e6f0;
+  background: #282a36;
+  border: 1px solid #33304a; border-radius: 6px;
+  padding: .35rem 1.8rem .35rem .6rem;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%239d99b5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right .6rem center;
+}
+.controls select:hover {
+  border-color: #7cc7ff;
+}
+.controls select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+/* ── Buttons ──────────────────────────────────────────── */
+
+.controls button {
+  font: 12px/1 'Courier Prime', monospace;
+  background: #282a36; color: #e8e6f0;
+  border: 1px solid #33304a; border-radius: 6px;
+  padding: .35rem .6rem; cursor: pointer;
+}
+.controls button:hover {
+  border-color: #7cc7ff;
+}
+.controls button.primary {
+  background: #3b82f6; border-color: #3b82f6; color: #fff;
+}
+.controls button.primary:hover {
+  background: #2563eb;
+}
+.controls button:disabled {
+  opacity: 0.5; cursor: not-allowed;
+}
+
+/* ── Loading indicator ────────────────────────────────── */
+
+.loading-bar {
+  height: 2px;
+  background: linear-gradient(90deg, #3b82f6, #ff6b6b, #3b82f6);
+  background-size: 200% 100%;
+  animation: loading-slide 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+.loading-bar.hidden { display: none; }
+
+@keyframes loading-slide {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ── About modal ──────────────────────────────────────── */
+
+dialog {
+  font: 13px/1.5 'Courier Prime', monospace;
+  color: #e8e6f0;
+  background: #1c1b26;
+  border: 1px solid #33304a;
+  border-radius: 12px;
+  padding: 0;
+  max-width: 500px;
+  width: calc(100vw - 2rem);
+  max-height: 80vh;
+  overflow: auto;
+  margin: auto;
+}
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+dialog[open] {
+  animation: modal-in .15s ease;
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .75rem 1rem;
+  border-bottom: 1px solid #33304a;
+  position: sticky; top: 0;
+  background: #1c1b26;
+}
+.modal-header h2 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 11px; font-weight: 400;
+}
+.modal-header h2 code { color: #ff6b6b; }
+
+.modal-close {
+  font-size: 20px; line-height: 1;
+  background: none; border: none; color: #9d99b5;
+  cursor: pointer; padding: 0 .25rem;
+}
+.modal-close:hover { color: #7cc7ff; }
+
+.modal-body {
+  padding: 1rem;
+}
+.modal-body p { margin: 0 0 .75rem; }
+.modal-body h3 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 9px; font-weight: 400;
+  color: #ff6b6b; margin: 1.25rem 0 .5rem;
+  letter-spacing: 0.05em;
+}
+.modal-body .modal-label {
+  font-size: 11px; color: #9d99b5; margin-bottom: .25rem;
+}
+.modal-body pre {
+  background: #14141b;
+  border: 1px solid #33304a; border-radius: 6px;
+  padding: .5rem .75rem;
+  overflow-x: auto;
+  font-size: 11px;
+  margin: 0 0 .75rem;
+}
+.modal-body pre code {
+  color: #e8e6f0;
+  background: none; border: none; padding: 0;
+  font: inherit;
+}
+.modal-body code {
+  font: 12px/1.4 'Courier Prime', monospace;
+  background: #14141b;
+  border: 1px solid #33304a; border-radius: 4px;
+  padding: .15rem .4rem;
+  color: #e5c07b;
+}
+
+.modal-links {
+  display: flex; gap: .75rem; margin-top: .5rem;
+}
+.modal-links a {
+  font: 12px/1 'Courier Prime', monospace;
+  color: #7cc7ff; text-decoration: none;
+  padding: .3rem .6rem;
+  border: 1px solid #33304a; border-radius: 6px;
+}
+.modal-links a:hover {
+  border-color: #7cc7ff;
+  background: rgba(124, 199, 255, 0.08);
+}
+
+.modal-license {
+  font-size: 11px; color: #9d99b5;
+  margin-top: 1.25rem !important;
+  padding-top: .75rem;
+  border-top: 1px solid #33304a;
+}
+
+/* ── Tool nav ─────────────────────────────────────────── */
+
+.tool-nav {
+  padding: .4rem 1.25rem;
+  border-bottom: 1px solid #33304a;
+  background: #1c1b26;
+  flex-shrink: 0;
+}
+.tool-nav .back-link {
+  font-family: 'Press Start 2P', monospace;
+  font-size: 7px;
+  color: #9d99b5;
+  background: #282a36;
+  padding: 6px 10px;
+  border: 1px solid #33304a;
+  text-decoration: none;
+  letter-spacing: 0.1em;
+  transition: color 0.15s, border-color 0.15s;
+}
+.tool-nav .back-link:hover {
+  color: #e8e6f0;
+  border-color: #7cc7ff;
+}
+
+/* ── Main split pane ──────────────────────────────────── */
+
+main {
+  display: flex; flex: 1; min-height: 0;
+}
+
+#editor-panel {
+  flex: 1; min-width: 0; overflow: hidden;
+  display: flex; flex-direction: column;
+}
+
+#divider {
+  width: 4px; cursor: col-resize;
+  background: #33304a;
+  flex-shrink: 0;
+}
+#divider:hover { background: #7cc7ff; }
+
+#output-panel {
+  flex: 1; min-width: 0; overflow: auto;
+  display: flex; flex-direction: column;
+  background: #14141b;
+}
+
+/* ── Editor (CodeMirror) ──────────────────────────────── */
+
+#editor-panel .cm-editor {
+  flex: 1; overflow: auto;
+}
+#editor-panel .cm-editor .cm-scroller {
+  overflow: auto;
+}
+#editor-panel .cm-editor .cm-content {
+  font-family: 'Courier Prime', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+}
+
+/* ── Output panel ─────────────────────────────────────── */
+
+#output-content {
+  flex: 1; padding: 1rem; overflow: auto;
+  font-size: 13px;
+}
+
+#output-content pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#console-log {
+  border-top: 1px solid #33304a;
+  padding: .5rem 1rem;
+  max-height: 30vh; overflow: auto;
+  font-size: 12px;
+  background: #1c1b26;
+}
+
+.console-line {
+  padding: .125rem 0;
+  border-bottom: 1px solid #1e1d28;
+  white-space: pre-wrap; word-break: break-all;
+}
+.console-line.log { color: #e8e6f0; }
+.console-line.warn { color: #e5c07b; }
+.console-line.error { color: #ff6b6b; }
+
+/* ── Empty state ──────────────────────────────────────── */
+
+.empty-state {
+  display: flex; align-items: center; justify-content: center;
+  flex: 1; color: #9d99b5; font-size: 12px;
+  flex-direction: column; gap: .5rem;
+}
+.empty-state code {
+  font-size: 11px; color: #7cc7ff;
+}
+
+/* ── Status bar ───────────────────────────────────────── */
+
+footer {
+  display: flex; align-items: center; gap: 1rem;
+  padding: .25rem 1rem;
+  border-top: 1px solid #33304a;
+  background: #1c1b26;
+  font-size: 11px; color: #9d99b5;
+  flex-shrink: 0;
+}
+
+footer .dot {
+  display: inline-block; width: 8px; height: 8px;
+  border-radius: 50%; margin-right: .25rem;
+}
+footer .dot.ok  { background: #6ee7a8; }
+footer .dot.err { background: #ff6b6b; }
+footer .dot.loading { background: #e5c07b; animation: pulse 1s ease-in-out infinite; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Mobile ───────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+  main { flex-direction: column; }
+  #divider {
+    width: auto; height: 4px; cursor: row-resize;
+  }
+  header { flex-wrap: wrap; }
+}
