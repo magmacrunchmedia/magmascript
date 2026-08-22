@@ -1,0 +1,46 @@
+// dictionaries.mgs — Dicts, keys, values, iteration
+
+// Create a dictionary
+player = {
+    "name": "Dag Henderson",
+    "hp": 100,
+    "attack": 15,
+    "defense": 8
+}
+
+print(f"Player: {player}")
+
+// Access values
+print(f"Name: {player.name}")
+print(f"HP: {player.hp}")
+
+// Modify values
+player.hp = player.hp - 30
+print(f"After hit: {player.hp} HP")
+
+// Iterate over keys
+print("Stats:")
+for key in keys(player) {
+    print(f"  {key}: {player[key]}")
+}
+
+// Build a dict manually
+leaderboard = {}
+leaderboard.Alice = 95
+leaderboard.Bob = 87
+leaderboard.Charlie = 92
+print(f"Leaderboard: {leaderboard}")
+
+// Dict literal with computed entries
+squares = {
+    "one": 1,
+    "two": 4,
+    "three": 9,
+    "four": 16,
+    "five": 25
+}
+print(f"Squares dict: {squares}")
+
+// Check if key exists
+print(f"Has attack? {"attack" in player}")
+print(f"Has mana? {"mana" in player}")

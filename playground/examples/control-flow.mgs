@@ -1,0 +1,70 @@
+// control-flow.mgs — if/else, for, while, break, continue
+
+// if / else if / else
+grade = 85
+
+if grade >= 90 {
+    print("A — excellent!")
+} else {
+    if grade >= 80 {
+        print("B — great job!")
+    } else {
+        if grade >= 70 {
+            print("C — not bad")
+        } else {
+            if grade >= 60 {
+                print("D — needs work")
+            } else {
+                print("F — try again")
+            }
+        }
+    }
+}
+
+// for-in loop with range
+print("Counting:")
+for i in range(1, 6) {
+    print(f"  {i}")
+}
+
+// for-in loop with a list
+fruits = ["apple", "banana", "cherry"]
+for fruit in fruits {
+    print(f"I like {fruit}")
+}
+
+// while loop
+countdown = 5
+while countdown > 0 {
+    print(f"T-minus {countdown}...")
+    countdown = countdown - 1
+}
+print("Liftoff!")
+
+// break — find first even number
+for n in [3, 7, 4, 9, 2, 8] {
+    if n % 2 == 0 {
+        print(f"First even: {n}")
+        break
+    }
+}
+
+// continue — skip odds
+print("Even numbers 1-10:")
+for i in range(1, 11) {
+    if i % 2 != 0 {
+        continue
+    }
+    print(f"  {i}")
+}
+
+// Nested loops — multiplication table
+print("3x3 multiplication table:")
+for i in range(1, 4) {
+    row = ""
+    for j in range(1, 4) {
+        result = i * j
+        row = row + str(result) + "\t"
+    }
+    print(row)
+}

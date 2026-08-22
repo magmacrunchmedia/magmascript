@@ -1,0 +1,78 @@
+// advanced-functions.mgs — Default params, closures, higher-order functions
+
+// --- Default parameters ---
+fn greet(name, greeting="hello") {
+    return f"{greeting}, {name}!"
+}
+
+print(greet("Jake"))
+print(greet("Jake", "hey"))
+print(greet("World", "goodbye"))
+
+// --- Closures ---
+fn make_counter(start) {
+    count = start
+    return {
+        "increment": fn() { count = count + 1 },
+        "value": fn() { return count },
+    }
+}
+
+counter = make_counter(0)
+counter.increment()
+counter.increment()
+counter.increment()
+print(f"Counter: {counter.value()}")
+
+// --- Higher-order functions ---
+fn apply(func, x) {
+    return func(x)
+}
+
+double = x -> x * 2
+triple = x -> x * 3
+
+print(f"apply(double, 5) = {apply(double, 5)}")
+print(f"apply(triple, 5) = {apply(triple, 5)}")
+
+// --- Function that returns a function ---
+fn make_adder(n) {
+    return x -> x + n
+}
+
+add10 = make_adder(10)
+add100 = make_adder(100)
+
+print(f"add10(5)   = {add10(5)}")
+print(f"add100(5)  = {add100(5)}")
+
+// --- Map/filter pattern with list comprehensions ---
+numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+
+// Square evens
+squared_evens = [x * x for x in numbers if x % 2 == 0]
+print(f"Squared evens: {squared_evens}")
+
+// Transform strings
+words = ["hello", "world", "magma", "script"]
+shouted = [w.upper() for w in words]
+print(f"Shouted: {shouted}")
+
+// --- Practical: pipeline pattern ---
+fn pipe(value, fns) {
+    result = value
+    for func in fns {
+        result = func(result)
+    }
+    return result
+}
+
+trim = s -> s.strip()
+lower = s -> s.lower()
+remove_spaces = s -> s.replace(" ", "_")
+
+raw = "  Hello World  "
+step1 = trim(raw)
+step2 = lower(step1)
+step3 = remove_spaces(step2)
+print(f'Pipeline: "{raw}" -> "{step3}"')

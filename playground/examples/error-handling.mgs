@@ -1,0 +1,75 @@
+// error-handling.mgs — try/haunter, throw fire toad
+
+// Basic try/haunter
+fn safe_divide(a, b) {
+    try {
+        if b == 0 {
+            throw fire toad("Cannot divide by zero")
+        }
+        return a / b
+    } haunter (e) {
+        print(f"Error: {e.message}")
+        return none
+    }
+}
+
+print(safe_divide(10, 3))
+print(safe_divide(10, 0))
+
+// Custom validation with throw
+fn parse_number(s) {
+    try {
+        if not s.contains("0") and not s.contains("1") and not s.contains("2") and not s.contains("3") and not s.contains("4") and not s.contains("5") and not s.contains("6") and not s.contains("7") and not s.contains("8") and not s.contains("9") {
+            throw fire toad(f"not a number: {s}")
+        }
+        return int(s)
+    } haunter (e) {
+        print(f"Could not parse '{s}': {e.message}")
+        return none
+    }
+}
+
+print(parse_number("42"))
+print(parse_number("hello"))
+
+// Throwing errors
+fn validate_age(age) {
+    if age < 0 {
+        throw fire toad("Age cannot be negative")
+    }
+    if age > 150 {
+        throw fire toad("Age seems unrealistic")
+    }
+    return true
+}
+
+try {
+    validate_age(25)
+    print("Age 25: valid")
+} haunter (e) {
+    print(e.message)
+}
+
+try {
+    validate_age(-5)
+    print("Age -5: valid")
+} haunter (e) {
+    print(f"Validation failed: {e.message}")
+}
+
+// Nested try/catch
+fn risky_operation() {
+    try {
+        try {
+            throw fire toad("inner error")
+        } haunter (e) {
+            print(f"Caught inner: {e.message}")
+            throw fire toad("outer error")
+        }
+    } haunter (e) {
+        print(f"Caught outer: {e.message}")
+    }
+}
+
+risky_operation()
+print("Done!")

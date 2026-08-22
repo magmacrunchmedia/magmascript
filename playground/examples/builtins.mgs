@@ -1,0 +1,55 @@
+// builtins.mgs — Built-in functions overview
+
+// --- len() ---
+print("len():")
+print(f'  string: {len("hello")}')
+print(f"  list:   {len([1, 2, 3, 4])}")
+print(f'  dict:   {len({"a": 1, "b": 2, "c": 3})}')
+
+// --- type() ---
+print("type():")
+print(f"  42       -> {type(42)}")
+print(f"  3.14     -> {type(3.14)}")
+print(f'  "hello"  -> {type("hello")}')
+print(f"  true     -> {type(true)}")
+print(f"  none     -> {type(none)}")
+print(f"  [1,2]    -> {type([1, 2])}")
+print(f'  dict     -> {type({"k": "v"})}')
+
+// --- str(), int(), float() ---
+print("Type conversions:")
+print(f'  str(42)      = {str(42)}')
+print(f'  str(3.14)    = {str(3.14)}')
+print(f'  int("100")   = {int("100")}')
+print(f'  int(3.9)     = {int(3.9)}')
+print(f'  float("2.5") = {float("2.5")}')
+print(f'  float(10)    = {float(10)}')
+
+// --- abs(), min(), max(), sum() ---
+print("Math builtins:")
+print(f"  abs(-7)    = {abs(-7)}")
+print(f"  min(3,1,4) = {min(3, 1, 4)}")
+print(f"  max(3,1,4) = {max(3, 1, 4)}")
+print(f"  sum([1,2,3,4,5]) = {sum([1, 2, 3, 4, 5])}")
+
+// --- range() ---
+print("range():")
+print(f"  range(5)        = {range(5)}")
+print(f"  range(2, 6)     = {range(2, 6)}")
+print(f"  range(0, 10, 2) = {range(0, 10, 2)}")
+
+// --- keys(), values() ---
+print("Dict builtins:")
+scores = {"Alice": 95, "Bob": 87, "Charlie": 92}
+print(f"  keys:   {keys(scores)}")
+print(f"  values: {values(scores)}")
+
+// --- Combining builtins ---
+print("Combining builtins:")
+nums = [3, 1, 4, 1, 5, 9, 2, 6]
+print(f"  numbers:  {nums}")
+print(f"  reversed: {nums[::-1]}")
+print(f"  sum:      {sum(nums)}")
+print(f"  min:      {min(nums)}")
+print(f"  max:      {max(nums)}")
+print(f"  len:      {len(nums)}")
