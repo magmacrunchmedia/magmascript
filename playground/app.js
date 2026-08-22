@@ -25,6 +25,7 @@
     "multi-assignment",
     "builtins",
     "advanced-functions",
+    "brand-commands",
   ];
 
   const LANG_FILES = [

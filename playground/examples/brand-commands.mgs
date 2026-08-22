@@ -1,0 +1,105 @@
+// brand-commands.mgs — magma, crunch, texas, toast
+//
+// These are MagmaScript's brand commands for managing
+// the magmacrunch.com infrastructure. They run from the
+// CLI, not the browser playground.
+//
+// Usage:
+//   magmascript magma                  — show status
+//   magmascript crunch mb              — incremental MusicBrainz backup
+//   magmascript crunch all             — incremental refresh of everything
+//   magmascript texas all              — full refresh (no skipping)
+//   magmascript toast cache            — clear all caches
+//   magmascript toast mb-cache         — clear MusicBrainz cache only
+
+// --- magma: system status ---
+// Shows version, registered domains, and cache stats
+
+print("=== magma status ===")
+
+version = "2.3.1"
+print(f"magmascript v{version}")
+
+domains = ["mcp", "pi", "mc1", "gh", "media", "scores", "rights", "archive", "mb", "lastfm", "search"]
+print(f"Domains registered: {len(domains)}")
+for domain in domains {
+    print(f"  {domain}")
+}
+
+cache_files = 1247
+cache_size = "48.3 MB"
+print(f"Cache: {cache_files} files ({cache_size})")
+
+// --- crunch: incremental refresh ---
+// Processes only stale or new entries. Fast, safe to run often.
+
+print("")
+print("=== crunch targets ===")
+
+targets = {
+    "mb": "MusicBrainz — incremental backup of artist/release data",
+    "lastfm": "Last.fm — fetch new play counts",
+    "search": "Search — rebuild search index",
+    "archive": "Archive — bake cache for archive pages",
+    "scores": "Scores — refresh game high scores",
+    "gh": "GitHub — sync repo metadata",
+    "all": "All — run every target above"
+}
+
+for target in keys(targets) {
+    print(f"  {target}: {targets[target]}")
+}
+
+// --- texas: full refresh ---
+// Like crunch but processes everything, not just stale entries.
+// Use when you need a complete rebuild.
+
+print("")
+print("=== texas ===")
+print("Full rebuild — same targets as crunch, but no skipping.")
+print("Use after schema changes or data corrections.")
+
+// --- toast: clear caches ---
+// Wipes cached data so the next crunch/texas rebuilds fresh.
+
+print("")
+print("=== toast targets ===")
+
+toast_targets = ["cache", "mb-cache", "lastfm-cache", "scores-cache", "gh-cache", "search-index", "all"]
+for t in toast_targets {
+    print(f"  {t}")
+}
+
+// --- Simulating a crunch pipeline ---
+print("")
+print("=== crunch pipeline demo ===")
+
+fn simulate_crunch(target) {
+    print(f"Crunching {target}...")
+    items = 0
+    skipped = 0
+    errors = 0
+
+    // Simulate processing
+    total = 50
+    for i in range(total) {
+        if i % 7 == 0 {
+            skipped = skipped + 1
+        } else {
+            items = items + 1
+        }
+    }
+
+    print(f"  completed: {items}")
+    print(f"  skipped:   {skipped}")
+    print(f"  errors:    {errors}")
+    return {"completed": items, "skipped": skipped, "errors": errors}
+}
+
+for target in ["mb", "lastfm", "scores"] {
+    result = simulate_crunch(target)
+    print(f"  {target}: {result.completed} done, {result.skipped} skipped")
+}
+
+print("")
+print("Done! All targets crunched.")
