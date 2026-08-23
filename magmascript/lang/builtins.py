@@ -47,12 +47,42 @@ class HttpProxy:
             raise ConnectionError(f"http.post: request failed: {e}")
 
 
+def to_display(value: Any, *, nested: bool = False) -> str:
+    """Render a value the way MagmaScript spells it.
+
+    Python's str() leaks its own vocabulary - None, True, False - into a
+    language whose literals are none, true and false. Everything that shows a
+    value to the user goes through here so the spelling is the same in print,
+    echo, f-strings and str().
+
+    Strings print bare at the top level but quoted inside a container, so
+    ["a", "b"] stays readable as a list of two strings.
+    """
+    from magmascript.lang.domain_bridge import ListWrapper
+
+    if value is None:
+        return "none"
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, str):
+        return f'"{value}"' if nested else value
+    if isinstance(value, (list, ListWrapper)):
+        return "[" + ", ".join(to_display(v, nested=True) for v in value) + "]"
+    if isinstance(value, dict):
+        inner = ", ".join(
+            f"{to_display(k, nested=True)}: {to_display(v, nested=True)}"
+            for k, v in value.items()
+        )
+        return "{" + inner + "}"
+    return str(value)
+
+
 def builtin_print(*args: Any) -> None:
-    print(*[str(a) for a in args])
+    print(*[to_display(a) for a in args])
 
 
 def builtin_echo(*args: Any) -> None:
-    print(*[str(a) for a in args])
+    print(*[to_display(a) for a in args])
 
 
 def builtin_len(value: Any) -> int:
@@ -97,9 +127,7 @@ def builtin_type(value: Any) -> str:
 
 
 def builtin_str(value: Any) -> str:
-    if value is None:
-        return "none"
-    return str(value)
+    return to_display(value)
 
 
 def builtin_int(value: Any) -> int:

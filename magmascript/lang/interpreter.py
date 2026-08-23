@@ -6,7 +6,7 @@ from typing import Any, Callable
 
 from magmascript.lang import ast_nodes as ast
 from magmascript.lang.environment import Environment, EnvironmentError
-from magmascript.lang.builtins import BUILTINS
+from magmascript.lang.builtins import BUILTINS, to_display
 from magmascript.lang.domain_bridge import create_domain_proxies, wrap_result
 from magmascript.lang.util import suggest
 from magmascript.lang import astheno
@@ -841,7 +841,7 @@ class Interpreter:
         parts = []
         for part in node.parts:
             value = self.execute(part, env)
-            parts.append(str(value))
+            parts.append(to_display(value))
         return "".join(parts)
 
     def exec_ExprStatement(self, node: ast.ExprStatement, env: Environment) -> Any:
@@ -849,12 +849,12 @@ class Interpreter:
 
     def exec_PrintStatement(self, node: ast.PrintStatement, env: Environment) -> Any:
         args = [self.execute(arg, env) for arg in node.arguments]
-        print(*[str(a) for a in args])
+        print(*[to_display(a) for a in args])
         return None
 
     def exec_SpookedStatement(self, node: ast.SpookedStatement, env: Environment) -> Any:
         import sys
-        message = self.execute(node.message, env)
+        message = to_display(self.execute(node.message, env))
         prefix = "spooked"
         if node.line:
             loc = f" at line {node.line}"

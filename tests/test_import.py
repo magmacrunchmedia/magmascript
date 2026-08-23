@@ -15,6 +15,11 @@ from magmascript.lang.ast_nodes import ImportStatement
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
+# Embedding a path in .mgs source means the lexer reads it, and on Windows a
+# native path's backslashes are escape sequences, so a segment beginning with t
+# arrives at the parser as a tab. Forward slashes are accepted by the
+# filesystem on every platform and survive lexing untouched.
+FIXTURES = FIXTURES_DIR.as_posix()
 
 
 class TestImportParsing:
@@ -87,37 +92,37 @@ class TestImportExecution:
     """Tests for executing import statements."""
 
     def test_simple_import(self):
-        source = f'intent "{FIXTURES_DIR}/greeter.mgs"\nresult = greeter.greet("World")'
+        source = f'intent "{FIXTURES}/greeter.mgs"\nresult = greeter.greet("World")'
         filename = str(FIXTURES_DIR / "test_script.mgs")
         result = Interpreter(source=source, filename=filename).run(Parser(Lexer(source, filename=filename).tokenize(), source=source, filename=filename).parse())
         assert result == "Hello, World!"
 
     def test_import_with_alias(self):
-        source = f'intent "{FIXTURES_DIR}/greeter.mgs" as g\nresult = g.greet("World")'
+        source = f'intent "{FIXTURES}/greeter.mgs" as g\nresult = g.greet("World")'
         filename = str(FIXTURES_DIR / "test_script.mgs")
         result = Interpreter(source=source, filename=filename).run(Parser(Lexer(source, filename=filename).tokenize(), source=source, filename=filename).parse())
         assert result == "Hello, World!"
 
     def test_from_import_single_name(self):
-        source = f'intent {{ greet }} from "{FIXTURES_DIR}/greeter.mgs"\nresult = greet("World")'
+        source = f'intent {{ greet }} from "{FIXTURES}/greeter.mgs"\nresult = greet("World")'
         filename = str(FIXTURES_DIR / "test_script.mgs")
         result = Interpreter(source=source, filename=filename).run(Parser(Lexer(source, filename=filename).tokenize(), source=source, filename=filename).parse())
         assert result == "Hello, World!"
 
     def test_from_import_multiple_names(self):
-        source = f'intent {{ greet, farewell }} from "{FIXTURES_DIR}/greeter.mgs"\nresult = farewell("World")'
+        source = f'intent {{ greet, farewell }} from "{FIXTURES}/greeter.mgs"\nresult = farewell("World")'
         filename = str(FIXTURES_DIR / "test_script.mgs")
         result = Interpreter(source=source, filename=filename).run(Parser(Lexer(source, filename=filename).tokenize(), source=source, filename=filename).parse())
         assert result == "Goodbye, World!"
 
     def test_from_import_with_alias(self):
-        source = f'intent {{ greet, farewell }} from "{FIXTURES_DIR}/greeter.mgs" as g\nresult = g.greet("World")'
+        source = f'intent {{ greet, farewell }} from "{FIXTURES}/greeter.mgs" as g\nresult = g.greet("World")'
         filename = str(FIXTURES_DIR / "test_script.mgs")
         result = Interpreter(source=source, filename=filename).run(Parser(Lexer(source, filename=filename).tokenize(), source=source, filename=filename).parse())
         assert result == "Hello, World!"
 
     def test_import_constant(self):
-        source = f'intent "{FIXTURES_DIR}/greeter.mgs"\nresult = greeter.PI'
+        source = f'intent "{FIXTURES}/greeter.mgs"\nresult = greeter.PI'
         filename = str(FIXTURES_DIR / "test_script.mgs")
         result = Interpreter(source=source, filename=filename).run(Parser(Lexer(source, filename=filename).tokenize(), source=source, filename=filename).parse())
         assert result == pytest.approx(3.14159)
@@ -128,7 +133,7 @@ class TestImportExecution:
             Interpreter(source=source).run(Parser(Lexer(source).tokenize(), source=source).parse())
 
     def test_from_import_name_not_found(self):
-        source = f'intent {{ nonexistent }} from "{FIXTURES_DIR}/greeter.mgs"'
+        source = f'intent {{ nonexistent }} from "{FIXTURES}/greeter.mgs"'
         filename = str(FIXTURES_DIR / "test_script.mgs")
         with pytest.raises(RuntimeError, match="Name 'nonexistent' not found"):
             Interpreter(source=source, filename=filename).run(Parser(Lexer(source, filename=filename).tokenize(), source=source, filename=filename).parse())
@@ -140,13 +145,14 @@ class TestImportCircular:
     def test_circular_import_detected(self):
         # Create temporary files with circular imports
         with tempfile.TemporaryDirectory() as tmpdir:
+            tmp = Path(tmpdir).as_posix()   # see FIXTURES above
             file_a = Path(tmpdir) / "a.mgs"
             file_b = Path(tmpdir) / "b.mgs"
             
-            file_a.write_text(f'intent "{tmpdir}/b.mgs"\nx = 1')
-            file_b.write_text(f'intent "{tmpdir}/a.mgs"\ny = 2')
+            file_a.write_text(f'intent "{tmp}/b.mgs"\nx = 1')
+            file_b.write_text(f'intent "{tmp}/a.mgs"\ny = 2')
             
-            source = f'intent "{tmpdir}/a.mgs"'
+            source = f'intent "{tmp}/a.mgs"'
             filename = str(Path(tmpdir) / "main.mgs")
             with pytest.raises(RuntimeError, match="Circular import"):
                 Interpreter(source=source, filename=filename).run(Parser(Lexer(source, filename=filename).tokenize(), source=source, filename=filename).parse())
@@ -158,8 +164,8 @@ class TestImportModuleCache:
     def test_module_cached(self):
         # Import the same module twice - should only execute once
         source = f'''
-intent "{FIXTURES_DIR}/greeter.mgs"
-intent "{FIXTURES_DIR}/greeter.mgs" as g
+intent "{FIXTURES}/greeter.mgs"
+intent "{FIXTURES}/greeter.mgs" as g
 result = greeter.greet("World")
 '''
         filename = str(FIXTURES_DIR / "test_script.mgs")
