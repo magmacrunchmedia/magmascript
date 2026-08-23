@@ -355,7 +355,7 @@ Options:
         print(f"Warning: File does not have .mgs extension: {script_path}", file=sys.stderr)
 
     try:
-        source = script_path.read_text()
+        source = script_path.read_text(encoding="utf-8")
         from magmascript.lang.interpreter import Interpreter
         from magmascript.lang.lexer import Lexer
         from magmascript.lang.parser import Parser
@@ -364,7 +364,14 @@ Options:
         tokens = Lexer(source, filename=filename).tokenize()
         program = Parser(tokens, source=source, filename=filename).parse()
         interpreter = Interpreter(source=source, filename=filename, script_args=args)
+
+        # hypnagogia: look the program over at the threshold, before it runs.
+        from magmascript.lang.hypnagogia import inspect as _hypnagogia
+        for finding in _hypnagogia(program, set(interpreter.globals.variables)):
+            print(f"spooked: {finding.render(filename)}", file=sys.stderr)
+
         interpreter.run(program)
+        interpreter.report_leaks()
     except KeyboardInterrupt:
         print("\nInterrupted.", file=sys.stderr)
         sys.exit(130)

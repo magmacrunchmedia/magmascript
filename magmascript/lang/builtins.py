@@ -68,8 +68,13 @@ def builtin_len(value: Any) -> int:
 
 def builtin_type(value: Any) -> str:
     from magmascript.lang.interpreter import MgsClass, MgsInstance
+    from magmascript.lang.astheno import Fixed, SpecHandle
     if value is None:
         return "none"
+    if isinstance(value, Fixed):
+        return value.spec.name
+    if isinstance(value, SpecHandle):
+        return "width"
     if isinstance(value, bool):
         return "bool"
     if isinstance(value, int):
@@ -98,6 +103,9 @@ def builtin_str(value: Any) -> str:
 
 
 def builtin_int(value: Any) -> int:
+    from magmascript.lang.astheno import Fixed
+    if isinstance(value, Fixed):
+        return int(value.value)
     if isinstance(value, str):
         return int(value)
     if isinstance(value, (int, float)):
@@ -106,6 +114,9 @@ def builtin_int(value: Any) -> int:
 
 
 def builtin_float(value: Any) -> float:
+    from magmascript.lang.astheno import Fixed
+    if isinstance(value, Fixed):
+        return float(value.value)
     if isinstance(value, str):
         return float(value)
     if isinstance(value, (int, float)):
@@ -135,7 +146,10 @@ def builtin_values(value: Any) -> list[Any]:
     raise TypeError(f"values() expected dict, got {type(value).__name__}")
 
 
-def builtin_abs(value: Any) -> int | float:
+def builtin_abs(value: Any) -> Any:
+    from magmascript.lang.astheno import Fixed, coerce
+    if isinstance(value, Fixed):
+        return coerce(abs(value.value), value.spec, context="abs()")
     if isinstance(value, (int, float)):
         return abs(value)
     raise TypeError(f"abs() expected number, got {type(value).__name__}")
@@ -163,7 +177,7 @@ def builtin_quarry(path: str) -> str:
     """Read file contents (quarry stone from the ground)."""
     from pathlib import Path
     try:
-        return Path(path).read_text()
+        return Path(path).read_text(encoding="utf-8")
     except FileNotFoundError:
         raise FileNotFoundError(f"quarry: file not found: {path}")
     except IsADirectoryError:
@@ -174,7 +188,7 @@ def builtin_litho(path: str, content: str) -> None:
     """Write content to file (lithography - writing on stone)."""
     from pathlib import Path
     try:
-        Path(path).write_text(content)
+        Path(path).write_text(content, encoding="utf-8")
     except IsADirectoryError:
         raise IsADirectoryError(f"litho: is a directory: {path}")
 
@@ -217,3 +231,9 @@ BUILTINS: dict[str, Callable] = {
     "litho": builtin_litho,
     "exec": builtin_exec,
 }
+
+# The Asthenosphere's widths and conversions. Registered as builtins rather
+# than keywords so a script that already uses these names keeps working.
+from magmascript.lang.astheno import ASTHENO_BUILTINS  # noqa: E402
+
+BUILTINS.update(ASTHENO_BUILTINS)
