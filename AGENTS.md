@@ -9,3 +9,9 @@ NEVER use the work account for anything.
 
 MagmaScript is a Python-inspired mini language with `.mgs` file extension.
 Tree-walk interpreter with domain bridge to magmascript modules.
+
+## AI Attribution
+
+**No AI attribution.** Do not append `Co-Authored-By: Claude …`, "Generated with
+…", or any similar trailer to commit messages, PR bodies, or release notes. If
+your tooling adds such a line by default, remove it before committing.
