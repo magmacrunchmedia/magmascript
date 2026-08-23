@@ -429,6 +429,10 @@ mc1.restart("OllamaSvc")
 mc1.set_power_mode("always-on")
 ```
 
+Also on the CLI: `magmascript mc1 status`, `mc1 info`, `mc1 processes`,
+`mc1 restart <service>`, `mc1 power`, `mc1 set-power-mode <always-on|sleep>`,
+`mc1 wake <mac>`, `mc1 reboot`.
+
 ### Mac Domain — Mac management (via SSH)
 ```magmascript
 // In a .mgs script, or: magmascript mac info

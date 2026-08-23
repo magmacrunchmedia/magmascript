@@ -14,6 +14,19 @@ user = "magma"
 
 Or set environment variables: `MAGMA_MC1_HOST`, `MAGMA_MC1_USER`.
 
+## CLI Usage
+
+```bash
+magmascript mc1 status                  # running Windows services
+magmascript mc1 info                    # uptime, memory, CPU, disk
+magmascript mc1 processes               # top processes by CPU
+magmascript mc1 restart OllamaSvc       # restart a service
+magmascript mc1 power                   # current power settings
+magmascript mc1 set-power-mode always-on
+magmascript mc1 wake <mac-address>      # Wake-on-LAN
+magmascript mc1 reboot
+```
+
 ## Script Usage
 
 ```magmascript

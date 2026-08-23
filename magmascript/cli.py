@@ -41,6 +41,7 @@ Domains:
     mcp         MagmaCrunch MCP server tools
     pi          Raspberry Pi management (direct SSH)
     mac         Mac management (direct SSH)
+    mc1         Windows PC management (direct SSH)
     gh          GitHub operations (direct API)
     media       Multi-provider media search
     scores      Game high scores (direct SSH)
@@ -220,6 +221,14 @@ def main():
             client = MacClient(config)
             try:
                 _dispatch_mac(action, rest, client, fmt)
+            finally:
+                client.close()
+
+        elif domain == "mc1":
+            from magmascript.domains.mc1 import MC1Client
+            client = MC1Client(config)
+            try:
+                _dispatch_mc1(action, rest, client, fmt)
             finally:
                 client.close()
 
@@ -555,6 +564,54 @@ def _dispatch_mcp(action: str, args: list[str], client, fmt: str):
     else:
         print(f"Unknown MCP action: {action!r}", file=sys.stderr)
         print("Run 'magmascript mcp --help' for available actions.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _dispatch_mc1(action: str, args: list[str], client, fmt: str):
+    """Dispatch MC1 (Windows PC) subcommands."""
+    if not action or action == "--help":
+        usage()
+
+    if action == "status":
+        print(format_output(client.services(), fmt))
+
+    elif action == "info":
+        print(format_output(client.info(), fmt))
+
+    elif action == "processes":
+        print(client.processes())
+
+    elif action == "restart":
+        if not args:
+            print("Usage: mc1 restart <service>", file=sys.stderr)
+            sys.exit(1)
+        print(client.restart(args[0]))
+
+    elif action == "power":
+        print(format_output(client.get_power_settings(), fmt))
+
+    elif action == "set-power-mode":
+        if not args or args[0] not in ("always-on", "sleep"):
+            print("Usage: mc1 set-power-mode <always-on|sleep>", file=sys.stderr)
+            sys.exit(1)
+        print(client.set_power_mode(args[0]))
+
+    elif action == "wake":
+        if not args:
+            print("Usage: mc1 wake <mac-address>", file=sys.stderr)
+            sys.exit(1)
+        print(client.wake_on_lan(args[0]))
+
+    elif action == "reboot":
+        print(client.reboot())
+
+    else:
+        print(f"Unknown mc1 action: {action!r}", file=sys.stderr)
+        print(
+            "Actions: status, info, processes, restart, power, "
+            "set-power-mode, wake, reboot",
+            file=sys.stderr,
+        )
         sys.exit(1)
 
 
