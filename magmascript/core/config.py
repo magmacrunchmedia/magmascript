@@ -40,6 +40,14 @@ class MC1Config:
 
 
 @dataclass
+class MacConfig:
+    """Mac SSH configuration (a MacBook on the Tailnet)."""
+
+    host: str = "100.81.70.91"
+    user: str = "jakemccoy"
+
+
+@dataclass
 class GHConfig:
     """GitHub API configuration."""
 
@@ -88,6 +96,7 @@ class Config:
     mcp: MCPConfig = field(default_factory=MCPConfig)
     pi: PIConfig = field(default_factory=PIConfig)
     mc1: MC1Config = field(default_factory=MC1Config)
+    mac: MacConfig = field(default_factory=MacConfig)
     gh: GHConfig = field(default_factory=GHConfig)
     media: MediaConfig = field(default_factory=MediaConfig)
     cache: CacheConfig = field(default_factory=CacheConfig)
@@ -122,6 +131,7 @@ def load_config(*, config_path: Path | None = None, env_prefix: str = "MAGMA_") 
     mcp_section = toml.get("mcp", {})
     pi_section = toml.get("pi", {})
     mc1_section = toml.get("mc1", {})
+    mac_section = toml.get("mac", {})
     gh_section = toml.get("gh", {})
     media_section = toml.get("media", {})
     cache_section = toml.get("cache", {})
@@ -142,6 +152,10 @@ def load_config(*, config_path: Path | None = None, env_prefix: str = "MAGMA_") 
         mc1=MC1Config(
             host=os.environ.get(f"{env_prefix}MC1_HOST", mc1_section.get("host", "100.75.220.87")),
             user=os.environ.get(f"{env_prefix}MC1_USER", mc1_section.get("user", "magma")),
+        ),
+        mac=MacConfig(
+            host=os.environ.get(f"{env_prefix}MAC_HOST", mac_section.get("host", "100.81.70.91")),
+            user=os.environ.get(f"{env_prefix}MAC_USER", mac_section.get("user", "jakemccoy")),
         ),
         gh=GHConfig(
             token=os.environ.get(f"{env_prefix}GH_TOKEN")

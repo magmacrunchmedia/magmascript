@@ -429,6 +429,21 @@ mc1.restart("OllamaSvc")
 mc1.set_power_mode("always-on")
 ```
 
+### Mac Domain — Mac management (via SSH)
+```magmascript
+// In a .mgs script, or: magmascript mac info
+info = mac.info()
+print(f"{info.hostname} — {info.os_version}")
+print(f"{info.cpu_name} ({info.cpu_cores} cores), {info.memory}")
+
+// Keep a checkout in sync
+print(mac.git_status())
+mac.git_pull()
+```
+
+Also on the CLI: `magmascript mac info`, `mac processes`, `mac git-status`,
+`mac git-pull`, `mac run "<cmd>"`.
+
 ### GitHub Domain — Direct API access
 ```bash
 magmascript gh workflows                     # all workflow statuses
@@ -572,6 +587,7 @@ Full documentation on the [Wiki](https://github.com/magmacrunchmedia/magmascript
 - [MCP Domain](https://github.com/magmacrunchmedia/magmascript/wiki/MCP-Domain)
 - [Pi Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Pi-Domain)
 - [MC1 Domain](https://github.com/magmacrunchmedia/magmascript/wiki/MC1-Domain)
+- [Mac Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Mac-Domain)
 - [GitHub Domain](https://github.com/magmacrunchmedia/magmascript/wiki/GitHub-Domain)
 - [Scores Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Scores-Domain)
 - [Rights Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Rights-Domain)

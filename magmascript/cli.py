@@ -40,6 +40,7 @@ Usage:
 Domains:
     mcp         MagmaCrunch MCP server tools
     pi          Raspberry Pi management (direct SSH)
+    mac         Mac management (direct SSH)
     gh          GitHub operations (direct API)
     media       Multi-provider media search
     scores      Game high scores (direct SSH)
@@ -211,6 +212,14 @@ def main():
             client = PIClient(config)
             try:
                 _dispatch_pi(action, rest, client, fmt)
+            finally:
+                client.close()
+
+        elif domain == "mac":
+            from magmascript.domains.mac import MacClient
+            client = MacClient(config)
+            try:
+                _dispatch_mac(action, rest, client, fmt)
             finally:
                 client.close()
 
@@ -546,6 +555,38 @@ def _dispatch_mcp(action: str, args: list[str], client, fmt: str):
     else:
         print(f"Unknown MCP action: {action!r}", file=sys.stderr)
         print("Run 'magmascript mcp --help' for available actions.", file=sys.stderr)
+        sys.exit(1)
+
+
+def _dispatch_mac(action: str, args: list[str], client, fmt: str):
+    """Dispatch Mac subcommands."""
+    if not action or action == "--help":
+        usage()
+
+    if action == "info":
+        print(format_output(client.info(), fmt))
+
+    elif action == "processes":
+        limit = int(args[0]) if args else 15
+        print(format_output(client.processes(limit), fmt))
+
+    elif action == "git-status":
+        repo = args[0] if args else "~/Documents/magmascript"
+        print(client.git_status(repo))
+
+    elif action == "git-pull":
+        repo = args[0] if args else "~/Documents/magmascript"
+        print(client.git_pull(repo))
+
+    elif action == "run":
+        if not args:
+            print("Usage: mac run <command>", file=sys.stderr)
+            sys.exit(1)
+        print(client.run(" ".join(args), timeout=30))
+
+    else:
+        print(f"Unknown mac action: {action!r}", file=sys.stderr)
+        print("Actions: info, processes, git-status, git-pull, run", file=sys.stderr)
         sys.exit(1)
 
 

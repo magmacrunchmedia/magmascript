@@ -15,6 +15,7 @@ from magmascript import domains  # noqa: F401
 from magmascript.domains.mcp import MCPClient
 from magmascript.domains.pi import PIClient
 from magmascript.domains.mc1 import MC1Client
+from magmascript.domains.mac import MacClient
 from magmascript.domains.gh import GHClient
 from magmascript.domains.media import MediaClient
 from magmascript.domains.rights import RightsClient
@@ -29,6 +30,7 @@ __all__ = [
     "GHClient",
     "GHConfig",
     "MC1Client",
+    "MacClient",
     "MCPClient",
     "MediaClient",
     "MediaConfig",
