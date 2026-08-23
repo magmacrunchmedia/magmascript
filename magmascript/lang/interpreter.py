@@ -1,13 +1,23 @@
 from __future__ import annotations
 
+import sys
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from magmascript.lang import ast_nodes as ast
 from magmascript.lang.environment import Environment, EnvironmentError
-from magmascript.lang.builtins import BUILTINS
+from magmascript.lang.builtins import BUILTINS, to_display
 from magmascript.lang.domain_bridge import create_domain_proxies, wrap_result
 from magmascript.lang.util import suggest
+from magmascript.lang import astheno
+
+
+# Maximum nested .mgs function calls. Each one costs ~7 Python frames, so the
+# interpreter raises Python's own limit to leave room for this many plus the
+# expression nesting inside them.
+MAX_CALL_DEPTH = 500
+_PY_FRAMES_PER_CALL = 7
+_PY_RECURSION_HEADROOM = 2000
 
 
 class RuntimeError(Exception):
@@ -91,6 +101,8 @@ class MgsFunction:
                 child_env.define(param, self.defaults[param])
 
         interp = _get_thread_interpreter()
+        if len(interp._call_stack) >= MAX_CALL_DEPTH:
+            raise interp._depth_error(self.body)
         interp._call_stack.append(self._stack_frame())
         try:
             result = interp.execute(self.body, child_env)
@@ -230,9 +242,14 @@ class Interpreter:
         self.source = source
         self.filename = filename
         self._call_stack: list[str] = []
+        self._current_node: ast.ASTNode | None = None
+        self.arena = astheno.Arena()
         self._script_args = script_args or []
         self._module_cache: dict[str, Environment] = {}
         self._loading_modules: set[str] = set()
+        needed = MAX_CALL_DEPTH * _PY_FRAMES_PER_CALL + _PY_RECURSION_HEADROOM
+        if sys.getrecursionlimit() < needed:
+            sys.setrecursionlimit(needed)
         self._setup_builtins()
         self._setup_domains()
 
@@ -263,17 +280,94 @@ class Interpreter:
         source_line = self._get_source_line(line) if line else None
         return RuntimeError(message, line, column, self.filename, source_line, list(self._call_stack), prefix)
 
+    def _depth_error(self, node: ast.ASTNode | None = None) -> RuntimeError:
+        """Build the recursion-limit error with an elided stack.
+
+        format() prints every frame it is given, so handing it a 500-deep
+        stack would bury the message. Show the bottom and top of the stack
+        and count what is between.
+        """
+        frames = self._call_stack
+        if len(frames) > 8:
+            frames = frames[:3] + [f"... {len(frames) - 6} more frames ..."] + frames[-3:]
+        else:
+            frames = list(frames)
+        line = getattr(node, "line", 0) or 0
+        column = getattr(node, "column", 0) or 0
+        # parse_block() builds Block without position info, so fall back to the
+        # first statement inside the function body.
+        if not line:
+            inner = next(iter(getattr(node, "body", []) or []), None)
+            line = getattr(inner, "line", 0) or 0
+            column = getattr(inner, "column", 0) or 0
+        source_line = self._get_source_line(line) if line else None
+        return RuntimeError(
+            f"Call depth exceeded {MAX_CALL_DEPTH} — is this recursion infinite?",
+            line,
+            column,
+            self.filename,
+            source_line,
+            frames,
+            "exploding brain syndrome",
+        )
+
     def run(self, program: ast.Program) -> Any:
-        result = None
-        for stmt in program.body:
-            result = self.execute(stmt, self.globals)
-        return result
+        # Register as the active interpreter so MgsFunction.__call__ executes
+        # bodies against *this* instance. Without this, any entry point that
+        # constructs an Interpreter directly (the CLI does) leaves the global
+        # unset, and function bodies run on a blank interpreter with no source
+        # — costing every in-function error its filename and caret diagram.
+        # Save/restore rather than assign, so an imported module's interpreter
+        # does not outlive its own run().
+        global _thread_interpreter
+        previous = _thread_interpreter
+        _thread_interpreter = self
+        previous_hook = astheno.set_warn_hook(self._astheno_warn)
+        previous_site = astheno.set_site_hook(self._astheno_site)
+        previous_arena = astheno.set_arena(self.arena)
+        try:
+            result = None
+            for stmt in program.body:
+                result = self.execute(stmt, self.globals)
+            return result
+        finally:
+            _thread_interpreter = previous
+            astheno.set_warn_hook(previous_hook)
+            astheno.set_site_hook(previous_site)
+            astheno.set_arena(previous_arena)
 
     def execute(self, node: ast.ASTNode, env: Environment) -> Any:
         method = getattr(self, f"exec_{type(node).__name__}", None)
         if method is None:
             raise RuntimeError(f"Unknown node type: {type(node).__name__}")
-        return method(node, env)
+        # Asthenosphere warnings (overflow, precision loss, leaks) are raised
+        # deep inside pure helpers that have no AST access. Recording the node
+        # here is what lets those warnings name a line. Measured cost: none.
+        self._current_node = node
+        try:
+            return method(node, env)
+        except astheno.AsthenoError as e:
+            # Raised deep inside arena helpers with no AST access. The
+            # innermost execute() frame catches it, so the reported node is
+            # the precise one; outer frames see a RuntimeError and pass it on.
+            raise self.error(str(e), node, prefix=e.prefix) from None
+
+    def _astheno_site(self) -> int:
+        return getattr(self._current_node, "line", 0) or 0
+
+    def report_leaks(self) -> None:
+        """Announce anything never scorched. Call at program exit."""
+        report = astheno.leak_report(self.arena)
+        if report:
+            print(f"spooked: {report}", file=sys.stderr)
+
+    def _astheno_warn(self, message: str) -> None:
+        node = self._current_node
+        line = getattr(node, "line", 0) or 0
+        prefix = "spooked"
+        if line:
+            prefix += f" at {self.filename}:{line}" if self.filename else f" at line {line}"
+        print(f"{prefix}: {message}", file=sys.stderr)
 
     def exec_Program(self, node: ast.Program, env: Environment) -> Any:
         result = None
@@ -324,6 +418,17 @@ class Interpreter:
 
         right = self.execute(node.right, env)
 
+        if isinstance(left, astheno.Pine) or isinstance(right, astheno.Pine):
+            return self._pine_binary_op(node, left, right)
+
+        if isinstance(left, astheno.Fixed) or isinstance(right, astheno.Fixed):
+            try:
+                return astheno.binary_op(node.op, left, right)
+            except astheno.AsthenoTypeError as e:
+                raise self.error(str(e), node, prefix="contemplate")
+            except ZeroDivisionError:
+                raise self.error("Division by zero", node)
+
         if node.op == "+":
             if isinstance(left, str) and isinstance(right, str):
                 return left + right
@@ -371,10 +476,55 @@ class Interpreter:
 
         raise RuntimeError(f"Unknown operator: {node.op}", node.line, node.column)
 
+    def _pine_binary_op(self, node: ast.BinaryOp, left: Any, right: Any) -> Any:
+        op = node.op
+        if op in ("==", "!="):
+            same = (
+                isinstance(left, astheno.Pine)
+                and isinstance(right, astheno.Pine)
+                and left.offset == right.offset
+            )
+            return same if op == "==" else not same
+
+        if op in ("+", "-"):
+            # pine - pine is the distance between them, in bytes.
+            if isinstance(left, astheno.Pine) and isinstance(right, astheno.Pine):
+                if op == "+":
+                    raise self.error(
+                        "two pines cannot be added - subtract them for the "
+                        "distance between them",
+                        node,
+                        prefix="contemplate",
+                    )
+                return left.offset - right.offset
+
+            if op == "-" and not isinstance(left, astheno.Pine):
+                raise self.error(
+                    "cannot subtract a pine from a number", node, prefix="contemplate"
+                )
+
+            pine, delta = (left, right) if isinstance(left, astheno.Pine) else (right, left)
+            if isinstance(delta, astheno.Fixed):
+                delta = delta.value
+            if isinstance(delta, bool) or not isinstance(delta, int):
+                raise self.error(
+                    f"a pine can only shift by a whole number of bytes, "
+                    f"got {type(delta).__name__}",
+                    node,
+                    prefix="contemplate",
+                )
+            return pine.shifted(delta if op == "+" else -delta)
+
+        raise self.error(
+            f"'{op}' is not defined for pines", node, prefix="contemplate"
+        )
+
     def exec_UnaryOp(self, node: ast.UnaryOp, env: Environment) -> Any:
         operand = self.execute(node.operand, env)
 
         if node.op == "-":
+            if isinstance(operand, astheno.Fixed):
+                return astheno.negate(operand)
             return -operand
         if node.op == "not":
             return not operand
@@ -419,6 +569,11 @@ class Interpreter:
         if obj is None:
             raise self.error("Cannot access property on None", node)
 
+        if isinstance(obj, astheno.Pine):
+            field = self._pine_field(obj, node.property)
+            if field is not None:
+                return field.get(obj)
+
         # Handle instance attribute/method access
         if isinstance(obj, MgsInstance):
             # First check instance attributes
@@ -462,6 +617,9 @@ class Interpreter:
             raise self.error(f"Cannot slice {type(obj).__name__}", node)
 
         index = self.execute(node.index, env)
+
+        if isinstance(obj, astheno.Pine):
+            return astheno.Fixed(obj.read_byte(self._pine_index(index, node)), astheno.SPECS["u8"])
 
         if isinstance(obj, list):
             if not isinstance(index, int):
@@ -683,7 +841,7 @@ class Interpreter:
         parts = []
         for part in node.parts:
             value = self.execute(part, env)
-            parts.append(str(value))
+            parts.append(to_display(value))
         return "".join(parts)
 
     def exec_ExprStatement(self, node: ast.ExprStatement, env: Environment) -> Any:
@@ -691,12 +849,12 @@ class Interpreter:
 
     def exec_PrintStatement(self, node: ast.PrintStatement, env: Environment) -> Any:
         args = [self.execute(arg, env) for arg in node.arguments]
-        print(*[str(a) for a in args])
+        print(*[to_display(a) for a in args])
         return None
 
     def exec_SpookedStatement(self, node: ast.SpookedStatement, env: Environment) -> Any:
         import sys
-        message = self.execute(node.message, env)
+        message = to_display(self.execute(node.message, env))
         prefix = "spooked"
         if node.line:
             loc = f" at line {node.line}"
@@ -782,7 +940,7 @@ class Interpreter:
         # Read and parse the module
         self._loading_modules.add(module_path)
         try:
-            with open(module_path, "r") as f:
+            with open(module_path, "r", encoding="utf-8") as f:
                 source = f.read()
             
             from magmascript.lang.lexer import Lexer
@@ -882,6 +1040,22 @@ class Interpreter:
             prefix=node.error_type,
         )
 
+    def exec_FloorplanDef(self, node: ast.FloorplanDef, env: Environment) -> Any:
+        from magmascript.lang.astheno.floorplan import Floorplan, build_floorplan
+
+        known: dict[str, Floorplan] = {}
+        scope: Environment | None = env
+        while scope is not None:
+            for key, value in scope.variables.items():
+                if isinstance(value, Floorplan) and key not in known:
+                    known[key] = value
+            scope = scope.parent
+
+        declared = [(f.name, f.type_name, f.count, f.points_to) for f in node.fields]
+        plan = build_floorplan(node.name, declared, known)
+        env.define(node.name, plan)
+        return plan
+
     def exec_ClassDef(self, node: ast.ClassDef, env: Environment) -> Any:
         methods = {}
         for method_node in node.methods:
@@ -906,9 +1080,27 @@ class Interpreter:
         env.define(node.name, mgs_class)
         return mgs_class
 
+    def _pine_field(self, pine: Any, name: str) -> Any:
+        """The floorplan field `name` on this pine, or None if it has no plan."""
+        plan = pine.spec
+        if getattr(plan, "fields", None) is None:
+            return None
+        field = plan.field_named(name)
+        if field is None:
+            available = ", ".join(f.name for f in plan.fields)
+            raise astheno.AsthenoError(
+                f"floorplan {plan.name} has no field '{name}'. Available: {available}"
+            )
+        return field
+
     def exec_PropertyAssignment(self, node: ast.PropertyAssignment, env: Environment) -> Any:
         obj = self.execute(node.object, env)
         value = self.execute(node.value, env)
+
+        if isinstance(obj, astheno.Pine):
+            field = self._pine_field(obj, node.property)
+            if field is not None:
+                return field.set(obj, value)
 
         if isinstance(obj, MgsInstance):
             obj.attributes[node.property] = value
@@ -923,9 +1115,65 @@ class Interpreter:
             node,
         )
 
+    def _pine_index(self, index: Any, node: ast.ASTNode) -> int:
+        if isinstance(index, astheno.Fixed):
+            index = index.value
+        if isinstance(index, bool) or not isinstance(index, int):
+            raise self.error(
+                f"a pine is indexed by whole bytes, got {type(index).__name__}",
+                node,
+                prefix="contemplate",
+            )
+        return index
+
+    def exec_IndexAssignment(self, node: ast.IndexAssignment, env: Environment) -> Any:
+        obj = self.execute(node.object, env)
+        index = self.execute(node.index, env)
+        value = self.execute(node.value, env)
+
+        if isinstance(obj, astheno.Pine):
+            at = self._pine_index(index, node)
+            if node.op != "=":
+                current = obj.read_byte(at)
+                raw = value.value if isinstance(value, astheno.Fixed) else value
+                value = current + raw if node.op == "+=" else current - raw
+            return astheno.Fixed(obj.write_byte(at, value), astheno.SPECS["u8"])
+
+        if isinstance(obj, str):
+            raise self.error("Cannot assign into a string — strings are immutable", node)
+
+        if isinstance(obj, list):
+            if not isinstance(index, int) or isinstance(index, bool):
+                raise self.error("List index must be an integer", node)
+            if index < 0 or index >= len(obj):
+                raise self.error(
+                    f"List index {index} out of range (list has {len(obj)} element{'s' if len(obj) != 1 else ''})",
+                    node,
+                )
+        elif isinstance(obj, dict):
+            pass
+        else:
+            raise self.error(f"Cannot assign into {type(obj).__name__}", node)
+
+        if node.op != "=":
+            if isinstance(obj, dict) and index not in obj:
+                raise self.error(f"Key '{index}' not found", node, prefix="devastate")
+            current = obj[index]
+            try:
+                value = current + value if node.op == "+=" else current - value
+            except TypeError as e:
+                raise self.error(str(e), node, prefix="contemplate")
+
+        obj[index] = value
+        return value
+
     def _is_truthy(self, value: Any) -> bool:
         if value is None:
             return False
+        if isinstance(value, astheno.Fixed):
+            return value.value != 0
+        if isinstance(value, astheno.Pine):
+            return value.alive
         if isinstance(value, bool):
             return value
         if isinstance(value, int):
@@ -936,6 +1184,8 @@ class Interpreter:
             return len(value) > 0
         if isinstance(value, list):
             return len(value) > 0
+        if isinstance(value, dict):
+            return len(value) > 0
         return True
 
 
@@ -945,4 +1195,7 @@ def run(source: str, script_args: list[str] | None = None) -> Any:
     interpreter = Interpreter(source=source, script_args=script_args)
     global _thread_interpreter
     _thread_interpreter = interpreter
-    return interpreter.run(program)
+    try:
+        return interpreter.run(program)
+    finally:
+        interpreter.report_leaks()

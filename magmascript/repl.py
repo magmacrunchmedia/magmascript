@@ -27,7 +27,7 @@ _BUILTINS = frozenset({
     "keys", "values", "abs", "min", "max", "sum", "args",
 })
 _DOT_COMMANDS = frozenset({
-    ".exit", ".help", ".clear", ".ast",
+    ".exit", ".help", ".clear", ".ast", ".arena",
     ".magma", ".crunch", ".texas", ".toast",
 })
 _CRUNCH_TARGETS = frozenset({"mb", "lastfm", "search", "archive", "scores", "gh", "all"})
@@ -171,8 +171,8 @@ def _repl_enhanced() -> None:
         lexer=lexer,
         style=prompt_style,
         multiline=True,
-        prompt=HTML("<mgs-prompt>mgs></mgs-prompt> "),
-        continuation=HTML("<mgs-continuation>...</mgs-continuation> "),
+        message=HTML("<mgs-prompt>mgs></mgs-prompt> "),
+        prompt_continuation=HTML("<mgs-continuation>...</mgs-continuation> "),
     )
 
     print(f"MagmaScript v{__version__}")
@@ -192,6 +192,14 @@ def _repl_enhanced() -> None:
             if line.strip() == ".clear":
                 interpreter = Interpreter()
                 print("Variables cleared.")
+                continue
+
+            if line.strip() == ".arena":
+                from magmascript.lang.astheno import arena_summary, leak_report
+                print(arena_summary(interpreter.arena))
+                report = leak_report(interpreter.arena)
+                if report:
+                    print(report)
                 continue
 
             if line.strip() == ".ast":
@@ -260,7 +268,13 @@ def _repl_enhanced() -> None:
 
 
 def _repl_basic() -> None:
-    import readline
+    # readline gives line editing and history, and does not exist on Windows.
+    # It is a convenience, not a requirement - without it the REPL still reads
+    # and evaluates, so an absent module must not take the fallback down.
+    try:
+        import readline  # noqa: F401
+    except ImportError:
+        pass
 
     interpreter = Interpreter()
     buffer: list[str] = []
@@ -287,6 +301,14 @@ def _repl_basic() -> None:
             if line.strip() == ".clear":
                 interpreter = Interpreter()
                 print("Variables cleared.")
+                continue
+
+            if line.strip() == ".arena":
+                from magmascript.lang.astheno import arena_summary, leak_report
+                print(arena_summary(interpreter.arena))
+                report = leak_report(interpreter.arena)
+                if report:
+                    print(report)
                 continue
 
             if line.strip() == ".ast":
@@ -466,6 +488,7 @@ def _print_help() -> None:
     print("  .help    - Show this help")
     print("  .clear   - Clear variables")
     print("  .ast     - Show AST for next input")
+    print("  .arena   - Show the Asthenosphere arena (every block, alive or scorched)")
     print("  .magma   - Show system status dashboard")
     print("  .crunch  - Run a pipeline (mb, lastfm, search, archive, scores, gh, all)")
     print("  .texas   - Full/heavy operation (same targets, no shortcuts)")

@@ -1,0 +1,50 @@
+// astheno-packing.mgs - the same four fields, two orderings, two sizes.
+//
+// "Order your struct fields widest-first" is advice usually passed around as
+// folklore. Here it is a thing you can look at.
+
+// Declared in the order a person would naturally write them.
+floorplan Loose {
+    active: u8
+    id: i64
+    kind: u8
+    score: i32
+}
+
+// The same four fields, widest first.
+floorplan Tight {
+    id: i64
+    score: i32
+    active: u8
+    kind: u8
+}
+
+layout(Loose)
+print("")
+layout(Tight)
+print("")
+
+waste = sizeof(Loose) - sizeof(Tight)
+print(f"Loose is {sizeof(Loose)} bytes, Tight is {sizeof(Tight)} bytes")
+print(f"reordering saved {waste} bytes per value - {waste * 1000} across a thousand of them")
+print("")
+
+// Same data in both. Watch where the bytes land.
+a = garrison(Loose)
+a.active = u8(1)
+a.id = i64(305419896)
+a.kind = u8(2)
+a.score = i32(-1)
+
+b = garrison(Tight)
+b.id = i64(305419896)
+b.score = i32(-1)
+b.active = u8(1)
+b.kind = u8(2)
+
+bathysphere(a)
+print("")
+bathysphere(b)
+
+scorch(a)
+scorch(b)

@@ -82,9 +82,14 @@ class ListWrapper:
 
 def wrap_result(result: Any) -> Any:
     from magmascript.lang.interpreter import MgsInstance, MgsClass
+    from magmascript.lang.astheno import Fixed, Pine
     if result is None:
         return None
     if isinstance(result, (int, float, str, bool)):
+        return result
+    # Asthenosphere values are dataclasses but are language primitives, not
+    # host objects to be introspected. They must not be wrapped.
+    if isinstance(result, (Fixed, Pine)):
         return result
     if callable(result):
         return result
