@@ -49,6 +49,11 @@ Other additions:
 ### Changed — BREAKING
 - Empty dicts are now falsy, matching empty lists and strings. `if {}` previously
   took the true branch.
+- Values now print with MagmaScript's spelling rather than Python's. `print(none)`
+  said `None` while `str(none)` said `none`; booleans printed as `True`/`False`.
+  All display — `print`, `echo`, f-strings, `str()`, `spooked` — goes through one
+  function, and containers render recursively (`[1, none, true]`). Strings print
+  bare at the top level and quoted inside a container.
 - The `f` string prefix is now meaningful. Only `f"..."` interpolates; in a plain
   string `{` is an ordinary character. Previously *any* string containing `{` was
   interpolated, so `print("use {braces}")` misbehaved. This also fixes plain
@@ -67,6 +72,10 @@ Other additions:
 - The enhanced REPL crashed on every platform with a current `prompt_toolkit`.
   `PromptSession` was constructed with `prompt=` and `continuation=`, which are
   not constructor arguments; they are `message=` and `prompt_continuation=`.
+
+- The test suite now passes on Windows. Nine import tests and four `quarry`/`litho`
+  tests embedded a native path into `.mgs` source, where a backslash before `t` is
+  a tab escape; they now embed POSIX-form paths, which every platform accepts.
 
 ### Removed
 - `scripts/examples/top-scores.ms`, a pre-1.2.0 sketch whose header still said

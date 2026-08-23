@@ -1003,20 +1003,20 @@ class TestInterpreterBuiltins:
         test_file = tmp_path / "test.txt"
         test_file.write_text("hello world")
         env = Interpreter()
-        env.run(Parser(Lexer(f'x = quarry("{test_file}")\n').tokenize()).parse())
+        env.run(Parser(Lexer(f'x = quarry("{test_file.as_posix()}")\n').tokenize()).parse())
         assert env.globals.get("x") == "hello world"
 
     def test_litho_writes_file(self, tmp_path):
         test_file = tmp_path / "output.txt"
         env = Interpreter()
-        env.run(Parser(Lexer(f'litho("{test_file}", "hello world")\n').tokenize()).parse())
+        env.run(Parser(Lexer(f'litho("{test_file.as_posix()}", "hello world")\n').tokenize()).parse())
         assert test_file.read_text() == "hello world"
 
     def test_litho_creates_file(self, tmp_path):
         test_file = tmp_path / "new.txt"
         assert not test_file.exists()
         env = Interpreter()
-        env.run(Parser(Lexer(f'litho("{test_file}", "created")\n').tokenize()).parse())
+        env.run(Parser(Lexer(f'litho("{test_file.as_posix()}", "created")\n').tokenize()).parse())
         assert test_file.exists()
         assert test_file.read_text() == "created"
 
@@ -1024,7 +1024,7 @@ class TestInterpreterBuiltins:
         test_file = tmp_path / "overwrite.txt"
         test_file.write_text("old content")
         env = Interpreter()
-        env.run(Parser(Lexer(f'litho("{test_file}", "new content")\n').tokenize()).parse())
+        env.run(Parser(Lexer(f'litho("{test_file.as_posix()}", "new content")\n').tokenize()).parse())
         assert test_file.read_text() == "new content"
 
     def test_quarry_not_found(self):
@@ -1816,3 +1816,54 @@ class TestFStringPrefixRequired:
         env = Interpreter()
         env.run(Parser(Lexer('x = "{nope}"\n').tokenize()).parse())
         assert env.globals.get("x") == "{nope}"
+
+
+class TestDisplaySpelling:
+    """Values print with MagmaScript's spelling, not Python's.
+
+    Before 3.0.0 these disagreed: str(none) gave 'none' but print(none) gave
+    'None', because print used Python's str() directly.
+    """
+
+    def _out(self, src, capsys):
+        env = Interpreter()
+        env.run(Parser(Lexer(src).tokenize()).parse())
+        return capsys.readouterr().out.strip()
+
+    def test_none_prints_as_none(self, capsys):
+        assert self._out("print(none)\n", capsys) == "none"
+
+    def test_print_and_str_agree(self, capsys):
+        assert self._out("print(str(none))\n", capsys) == "none"
+
+    def test_none_interpolates_as_none(self, capsys):
+        assert self._out('print(f"{none}")\n', capsys) == "none"
+
+    def test_booleans_use_language_spelling(self, capsys):
+        assert self._out("print(true, false)\n", capsys) == "true false"
+
+    def test_booleans_interpolate(self, capsys):
+        assert self._out('print(f"{true}")\n', capsys) == "true"
+
+    def test_top_level_string_prints_bare(self, capsys):
+        assert self._out('print("hi")\n', capsys) == "hi"
+
+    def test_nested_string_is_quoted(self, capsys):
+        assert self._out('print(["a", "b"])\n', capsys) == '["a", "b"]'
+
+    def test_list_renders_recursively(self, capsys):
+        assert self._out('print([1, none, true])\n', capsys) == "[1, none, true]"
+
+    def test_dict_renders_recursively(self, capsys):
+        assert self._out('print({"a": none})\n', capsys) == '{"a": none}'
+
+    def test_numbers_are_unchanged(self, capsys):
+        assert self._out("print(42, 3.5)\n", capsys) == "42 3.5"
+
+    def test_str_of_list_uses_language_spelling(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = str([none, true])\n').tokenize()).parse())
+        assert env.globals.get("x") == "[none, true]"
+
+    def test_echo_matches_print(self, capsys):
+        assert self._out("echo(none, true)\n", capsys) == "none true"
