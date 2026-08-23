@@ -209,6 +209,8 @@ class Parser:
             return ast.ContinueStatement(line=self.tokens[self.pos - 1].line)
         if self.check(TokenType.PRINT) or self.check(TokenType.IDENTIFIER) and self.peek().value == "print":
             return self.parse_print()
+        if self.check(TokenType.FLOORPLAN):
+            return self.parse_floorplan()
         if self.check(TokenType.SPOOKED):
             return self.parse_spooked()
         if self.check(TokenType.INTENT):
@@ -443,6 +445,76 @@ class Parser:
             column=token.column,
         )
 
+    def parse_floorplan(self) -> ast.FloorplanDef:
+        """floorplan Name { field: type ... } - or the ':' INDENT form."""
+        token = self.expect(TokenType.FLOORPLAN)
+        name_token = self.expect(TokenType.IDENTIFIER)
+
+        if self.match(TokenType.LBRACE):
+            closer = TokenType.RBRACE
+        else:
+            self.expect(TokenType.COLON)
+            self.skip_newlines()
+            self.expect(TokenType.INDENT)
+            closer = TokenType.DEDENT
+
+        fields: list[ast.FloorplanField] = []
+        self.skip_newlines()
+        while not self.check(closer) and not self.check(TokenType.EOF):
+            fields.append(self.parse_floorplan_field())
+            self.match(TokenType.COMMA)
+            self.skip_newlines()
+        self.expect(closer)
+
+        if not fields:
+            raise self.error(
+                f"floorplan {name_token.value} declares no fields", token
+            )
+
+        return ast.FloorplanDef(
+            name=name_token.value,
+            fields=fields,
+            line=token.line,
+            column=token.column,
+        )
+
+    def parse_floorplan_field(self) -> ast.FloorplanField:
+        name_token = self.expect(TokenType.IDENTIFIER)
+        self.expect(TokenType.COLON)
+        type_token = self.expect(TokenType.IDENTIFIER)
+
+        count = 1
+        points_to = ""
+        if self.match(TokenType.LBRACKET):
+            # `u8[16]` is an array of 16; `pine[Node]` points at a Node.
+            if self.check(TokenType.IDENTIFIER):
+                points_to = self.advance().value
+                if type_token.value != "pine":
+                    raise self.error(
+                        f"only a `pine` field can name what it points at, "
+                        f"not `{type_token.value}`",
+                        type_token,
+                    )
+            else:
+                count_token = self.expect(TokenType.NUMBER)
+                if not isinstance(count_token.value, int) or count_token.value < 1:
+                    raise self.error(
+                        f"array length must be a positive whole number, "
+                        f"got {count_token.value}",
+                        count_token,
+                    )
+                count = count_token.value
+            self.expect(TokenType.RBRACKET)
+
+        return ast.FloorplanField(
+            name=name_token.value,
+            type_name=type_token.value,
+            count=count,
+            points_to=points_to,
+            line=name_token.line,
+            column=name_token.column,
+        )
+
     def parse_class_def(self) -> ast.ClassDef:
         token = self.expect(TokenType.CLASS)
         name_token = self.expect(TokenType.IDENTIFIER)
@@ -565,6 +637,24 @@ class Parser:
                     line=expr.line,
                     column=expr.column,
                 )
+
+        # Handle index assignment: obj[key] = value
+        if isinstance(expr, ast.IndexAccess) and not isinstance(expr.index, ast.Slice):
+            for tok, op in (
+                (TokenType.EQ, "="),
+                (TokenType.PLUS_EQ, "+="),
+                (TokenType.MINUS_EQ, "-="),
+            ):
+                if self.match(tok):
+                    value = self.parse_assignment()
+                    return ast.IndexAssignment(
+                        object=expr.object,
+                        index=expr.index,
+                        value=value,
+                        op=op,
+                        line=expr.line,
+                        column=expr.column,
+                    )
 
         # Handle property assignment: obj.prop = value
         if isinstance(expr, ast.PropertyAccess):

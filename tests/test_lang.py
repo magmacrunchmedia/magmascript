@@ -1694,3 +1694,125 @@ class TestStringMethods:
         env = Interpreter()
         env.run(Parser(Lexer('csv = "apple,banana,cherry"\nfruits = csv.split(",")\nupper = [f.upper() for f in fruits]\nresult = " | ".join(upper)').tokenize()).parse())
         assert env.globals.get("result") == "APPLE | BANANA | CHERRY"
+
+
+class TestIndexAssignment:
+    """`a[0] = x` — added in 3.0.0; previously a parse error."""
+
+    def _run(self, src):
+        env = Interpreter()
+        env.run(Parser(Lexer(src).tokenize()).parse())
+        return env
+
+    def test_list_index_assign(self):
+        env = self._run("a = [1, 2, 3]\na[0] = 99\n")
+        assert env.globals.get("a") == [99, 2, 3]
+
+    def test_list_compound_assign(self):
+        env = self._run("a = [1, 2]\na[1] += 10\na[0] -= 1\n")
+        assert env.globals.get("a") == [0, 12]
+
+    def test_dict_index_assign(self):
+        env = self._run('d = {"x": 1}\nd["x"] = 5\nd["y"] = 7\n')
+        assert env.globals.get("d") == {"x": 5, "y": 7}
+
+    def test_dict_compound_assign(self):
+        env = self._run('d = {"n": 1}\nd["n"] += 41\n')
+        assert env.globals.get("d") == {"n": 42}
+
+    def test_nested_index_assign(self):
+        env = self._run("g = [[1, 2], [3, 4]]\ng[0][1] = 42\n")
+        assert env.globals.get("g") == [[1, 42], [3, 4]]
+
+    def test_expression_index_assign(self):
+        env = self._run("a = [0, 0, 0]\ni = 1\na[i + 1] = 7\n")
+        assert env.globals.get("a") == [0, 0, 7]
+
+    def test_out_of_range_raises(self):
+        with pytest.raises(MgsRuntimeError, match="out of range"):
+            self._run("a = [1]\na[5] = 1\n")
+
+    def test_string_assign_rejected(self):
+        with pytest.raises(MgsRuntimeError, match="immutable"):
+            self._run('s = "hi"\ns[0] = "x"\n')
+
+    def test_non_container_rejected(self):
+        with pytest.raises(MgsRuntimeError, match="Cannot assign into"):
+            self._run("n = 5\nn[0] = 1\n")
+
+    def test_compound_on_missing_key_raises(self):
+        with pytest.raises(MgsRuntimeError, match="not found"):
+            self._run('d = {}\nd["k"] += 1\n')
+
+    def test_non_integer_list_index_rejected(self):
+        with pytest.raises(MgsRuntimeError, match="must be an integer"):
+            self._run('a = [1]\na["x"] = 1\n')
+
+
+class TestRecursionDepthGuard:
+    """Infinite recursion reports as MagmaScript, not a Python traceback."""
+
+    def test_infinite_recursion_raises_mgs_error(self):
+        src = "fn boom(n) {\n    return boom(n + 1)\n}\nboom(0)\n"
+        with pytest.raises(MgsRuntimeError) as exc:
+            Interpreter(source=src).run(Parser(Lexer(src).tokenize()).parse())
+        assert exc.value.prefix == "exploding brain syndrome"
+
+    def test_stack_trace_is_elided(self):
+        src = "fn boom(n) {\n    return boom(n + 1)\n}\nboom(0)\n"
+        with pytest.raises(MgsRuntimeError) as exc:
+            Interpreter(source=src).run(Parser(Lexer(src).tokenize()).parse())
+        assert len(exc.value.call_stack) <= 8
+        assert any("more frames" in f for f in exc.value.call_stack)
+
+    def test_deep_but_finite_recursion_still_works(self):
+        src = "fn down(n) {\n    if n <= 0 { return 0 }\n    return down(n - 1)\n}\nx = down(400)\n"
+        env = Interpreter(source=src)
+        env.run(Parser(Lexer(src).tokenize()).parse())
+        assert env.globals.get("x") == 0
+
+    def test_error_carries_source_location(self):
+        src = "fn boom(n) {\n    return boom(n + 1)\n}\nboom(0)\n"
+        with pytest.raises(MgsRuntimeError) as exc:
+            Interpreter(source=src, filename="t.mgs").run(Parser(Lexer(src).tokenize()).parse())
+        assert exc.value.line == 2
+        assert exc.value.filename == "t.mgs"
+        assert "boom" in exc.value.format()
+
+
+class TestDictTruthiness:
+    """3.0.0 BREAKING: empty dicts are falsy, matching lists and strings."""
+
+    def test_empty_dict_is_falsy(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('r = "no"\nif {} { r = "yes" }\n').tokenize()).parse())
+        assert env.globals.get("r") == "no"
+
+    def test_non_empty_dict_is_truthy(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('r = "no"\nif {"a": 1} { r = "yes" }\n').tokenize()).parse())
+        assert env.globals.get("r") == "yes"
+
+
+class TestFStringPrefixRequired:
+    """3.0.0 BREAKING: only f-strings interpolate."""
+
+    def test_plain_string_keeps_braces_literal(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('name = "World"\nx = "Hello, {name}!"\n').tokenize()).parse())
+        assert env.globals.get("x") == "Hello, {name}!"
+
+    def test_f_string_interpolates(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('name = "World"\nx = f"Hello, {name}!"\n').tokenize()).parse())
+        assert env.globals.get("x") == "Hello, World!"
+
+    def test_plain_string_allows_unmatched_brace(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "a { b"\n').tokenize()).parse())
+        assert env.globals.get("x") == "a { b"
+
+    def test_plain_string_undefined_name_is_not_an_error(self):
+        env = Interpreter()
+        env.run(Parser(Lexer('x = "{nope}"\n').tokenize()).parse())
+        assert env.globals.get("x") == "{nope}"

@@ -1,0 +1,64 @@
+// astheno-faults.mgs - every way to misuse memory, caught and named.
+//
+// C lets you do all four of these silently. The whole point of running memory
+// code in an interpreter is that it can stop and tell you which one you did,
+// where you did it, and which earlier line set you up for it.
+
+fn attempt(label, thunk) {
+    try {
+        thunk()
+        print(f"  {label}: no fault")
+    } haunter (e) {
+        print(f"  {label}")
+        print(f"    {e.prefix} - {e.message}")
+    }
+}
+
+print("1. reading ground you already scorched")
+attempt("use after scorch", fn() {
+    p = garrison(8)
+    scorch(p)
+    return p.peek(i32)
+})
+
+print("")
+print("2. scorching the same ground twice")
+attempt("double scorch", fn() {
+    p = garrison(8)
+    scorch(p)
+    scorch(p)
+})
+
+print("")
+print("3. reading past the end of a block")
+attempt("out of bounds", fn() {
+    p = garrison(8)
+    return p.peek(i32, 6)
+})
+
+print("")
+print("4. walking a pine off its block")
+attempt("shifted out of range", fn() {
+    p = garrison(8)
+    q = p + 6
+    return q.peek(i32)
+})
+
+print("")
+print("5. arithmetic that does not fit")
+counter = u8(254)
+i = 0
+while i < 3 {
+    counter = counter + 1
+    print(f"  u8 counter is now {counter}")
+    i = i + 1
+}
+
+print("")
+print("6. ground nobody scorched - watch stderr when this exits")
+leaked = garrison(64)
+
+// The leak report will name three pines, not one. Cases 3 and 4 above also
+// leaked: each faulted before reaching a scorch, so their ground was never
+// released. Error paths leaking is the most ordinary memory bug there is, and
+// it is why the report counts what survived rather than what you meant to free.

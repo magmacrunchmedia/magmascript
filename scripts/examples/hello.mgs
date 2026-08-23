@@ -4,7 +4,7 @@ print("Hello, MagmaScript!")
 
 // Variables
 name = "World"
-greeting = "Hello, {name}!"
+greeting = f"Hello, {name}!"
 print(greeting)
 
 // Functions

@@ -67,6 +67,7 @@ class TokenType(Enum):
     THROW = auto()
     CLASS = auto()
     SELF = auto()
+    FLOORPLAN = auto()
 
     # Special
     NEWLINE = auto()
@@ -101,6 +102,7 @@ KEYWORDS: dict[str, TokenType] = {
     "throw": TokenType.THROW,
     "class": TokenType.CLASS,
     "self": TokenType.SELF,
+    "floorplan": TokenType.FLOORPLAN,
 }
 
 
