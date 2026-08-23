@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2026-08-23
+
+A documentation release. Nothing under `magmascript/` changed, so the wheel is
+functionally identical to 3.0.0 — this exists to correct what the project page
+and wiki tell people.
+
+### Fixed
+- The 3.0.0 project page on PyPI advertised four `magmascript mc1 ...` commands
+  that exit 1 with `Unknown domain: 'mc1'`. `cli.py` has no `mc1` branch; the
+  working interface is the `.mgs` script one (`mc1.info()`). The README was
+  corrected after 3.0.0 was tagged, so only a new release could republish it.
+- `info.cpu_usage` does not exist. The field is `cpu_load`, it is a `str` not an
+  `int`, and it already carries the percent sign — the documented trailing `%`
+  rendered `4%%`. Wrong in `README.md` and twice in `wiki/MC1-Domain.md`.
+- MC1 environment variables are `MAGMA_MC1_HOST` / `MAGMA_MC1_USER`. The wiki
+  said `MAGMASCRIPT_MC1_*`, which matches no prefix the code reads, so setting
+  them failed silently.
+- The config file is `~/.config/magmascript/config.toml`, not `.magmascript.toml`.
+- `cpu_cores` is a `str`, not an `int`; `MC1ServiceStatus` was missing its
+  `ok: bool` field.
+
+### Added
+- `scripts/embed-playground.py` generates the playground's embedded copy of
+  `magmascript/lang/` instead of it being maintained by hand, where it had
+  fallen a major version behind — `playground/app.js` shipped a pre-3.0 snapshot
+  with no Asthenosphere, so the playground silently ran v2.x semantics. Sources
+  are emitted as JSON strings rather than JS template literals, whose escaping
+  had already needed one fix.
+- `playground/examples/asthenosphere.mgs`.
+
 ## [3.0.0] - 2026-08-23
 
 The Asthenosphere — an explicit-memory tier beneath the dynamic language.
