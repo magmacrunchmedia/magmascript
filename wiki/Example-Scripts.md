@@ -18,6 +18,9 @@ Working example scripts in `scripts/examples/`:
 | `maintenance.mgs` | Weekly maintenance pipeline |
 | `real-domains.mgs` | Test real domain connections (MCP search, scoreboards, games) |
 | `domain-example.mgs` | Domain object overview and usage patterns |
+| `astheno-list.mgs` | Asthenosphere: arena, pines, and linked lists |
+| `astheno-packing.mgs` | Asthenosphere: floorplans with C layout |
+| `astheno-faults.mgs` | Asthenosphere: memory faults and error handling |
 
 ## Running Examples
 

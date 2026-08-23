@@ -28,11 +28,15 @@ flag = true
 nothing = none
 ```
 
+Values print with MagmaScript's spelling, not Python's: `none` not `None`, `true`/`false` not `True`/`False`. Containers render recursively — `[1, none, true]` prints as `[1, none, true]`.
+
 ## String Interpolation
 
+Only strings prefixed with `f` interpolate `{...}` expressions. Plain strings treat `{` as an ordinary character.
+
 ```magmascript
-print(f"Hello, {name} v{version}!")
-print(f"{2 + 2} = 4")
+print(f"Hello, {name} v{version}!")  // interpolated
+print("use {braces} safely")         // plain — {braces} printed literally
 ```
 
 ## Functions
@@ -101,6 +105,12 @@ print(scores["Tetris"])
 // List comprehensions
 evens = [x for x in numbers if x % 2 == 0]
 doubled = [x * 2 for x in numbers]
+
+// Index assignment
+numbers[0] = 99
+scores["Pong"] = 100
+numbers[0] += 10
+scores["Pong"] -= 5
 ```
 
 ## Operators
@@ -114,6 +124,18 @@ doubled = [x * 2 for x in numbers]
 if "key" in {"name": "Jake"} { ... }
 if 5 not in [1, 2, 3] { ... }
 ```
+
+## Truthiness
+
+The following values are falsy:
+- `none`
+- `false`
+- `0` (all number types)
+- `""` (empty string)
+- `[]` (empty list)
+- `{}` (empty dict)
+
+Everything else is truthy.
 
 ## Multi-Assignment
 

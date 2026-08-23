@@ -2,7 +2,7 @@
 
 ## Overview
 
-MagmaScript is a tree-walk interpreter with a domain bridge to external systems.
+MagmaScript is a two-tier tree-walk interpreter with a domain bridge to external systems. The **dynamic tier** handles Python-like scripting (variables, functions, classes). The **Asthenosphere** is an explicit-memory tier beneath it — fixed-width integers, a real byte arena, and C-layout structs — where the interpreter catches memory faults that C silently ignores.
 
 ## Components
 
@@ -15,10 +15,19 @@ magmascript/
 │   ├── ast_nodes.py    # AST node definitions
 │   ├── environment.py  # Variable scoping
 │   ├── builtins.py     # Built-in functions
-│   └── domain_bridge.py  # Domain proxy system
+│   ├── tokens.py       # Token definitions
+│   ├── hypnagogia.py   # Pre-execution analysis (unused names, dead code)
+│   ├── domain_bridge.py  # Domain proxy system
+│   └── astheno/      # Asthenosphere (explicit-memory tier)
+│       ├── __init__.py  # Arena, pine, floorplan builtins
+│       ├── arena.py     # garrison/scorch/peek/poke
+│       ├── floorplan.py # floorplan compiler and layout()
+│       ├── numeric.py   # Fixed-width integers (i8..u64, f32, f64)
+│       └── dump.py      # bathysphere hex dump
 ├── domains/        # Domain clients
 │   ├── mcp/        # MCP server client
 │   ├── pi/         # Raspberry Pi SSH
+│   ├── mc1/        # Windows PC SSH/PowerShell
 │   ├── gh/         # GitHub API
 │   ├── scores/     # Game scores
 │   ├── rights/     # Music rights
@@ -38,7 +47,11 @@ magmascript/
 ## Language Pipeline
 
 ```
-Source code → Lexer → Tokens → Parser → AST → Interpreter → Result
+Dynamic tier:
+  Source code → Lexer → Tokens → Parser → AST → Interpreter → Result
+
+Asthenosphere (runs before execution):
+  AST → hypnagogia (unused names, dead code warnings)
 ```
 
 ## Domain Bridge

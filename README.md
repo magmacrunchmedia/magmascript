@@ -415,11 +415,18 @@ magmascript pi traffic                       # nginx traffic analysis
 ```
 
 ### MC1 Domain — Windows PC management (via SSH)
-```bash
-magmascript mc1 status                        # all running Windows services
-magmascript mc1 info                          # uptime, memory, CPU, disk
-magmascript mc1 restart OllamaSvc             # restart a Windows service
-magmascript mc1 processes                     # top processes by CPU
+```magmascript
+// In a .mgs script
+info = mc1.info()
+print(f"CPU: {info.cpu_usage}%, Memory: {info.memory}")
+
+services = mc1.services()
+for svc in services {
+    print(f"{svc.name}: {svc.status}")
+}
+
+mc1.restart("OllamaSvc")
+mc1.set_power_mode("always-on")
 ```
 
 ### GitHub Domain — Direct API access
@@ -564,6 +571,7 @@ Full documentation on the [Wiki](https://github.com/magmacrunchmedia/magmascript
 - [Configuration](https://github.com/magmacrunchmedia/magmascript/wiki/Configuration)
 - [MCP Domain](https://github.com/magmacrunchmedia/magmascript/wiki/MCP-Domain)
 - [Pi Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Pi-Domain)
+- [MC1 Domain](https://github.com/magmacrunchmedia/magmascript/wiki/MC1-Domain)
 - [GitHub Domain](https://github.com/magmacrunchmedia/magmascript/wiki/GitHub-Domain)
 - [Scores Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Scores-Domain)
 - [Rights Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Rights-Domain)
