@@ -5,6 +5,82 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - Unreleased
+
+The Asthenosphere — an explicit-memory tier beneath the dynamic language.
+
+### Added
+
+**The Asthenosphere** — an explicit-memory tier beneath the dynamic language.
+Not faster (an `i32` add still costs a Python dispatch); the point is that the
+interpreter sees every memory operation and reports what C does silently.
+
+- Fixed-width numbers `i8 i16 i32 i64 u8 u16 u32 u64 f32 f64`. Arithmetic wraps
+  like C and announces each wrap. No integer promotion: `i32 + u8` is an error
+  pointing at `osmosis()`. `/` truncates toward zero on integer widths rather
+  than flooring.
+- A real byte arena: `garrison(n)` claims ground, `scorch(p)` releases it,
+  pines carry their block's bounds through pointer arithmetic, and `p[i]` /
+  `p.peek(w)` / `p.poke(w, v)` read and write it.
+- `floorplan Name { field: type }` — structs with C layout rules. Fields may be
+  widths, arrays (`u8[16]`), nested floorplans, or `pine[Other]` pointers,
+  including self-reference for linked lists. `layout()` prints the padding rows,
+  `sizeof()` and `alignof()` report the numbers.
+- `bathysphere(p)` — annotated hex dump showing which bytes belong to which
+  field and what they decode to. `.arena` does the same for the whole arena in
+  the REPL.
+- Memory faults, all with the usual caret diagram and all catchable by
+  `try`/`haunter`: `quicksand` (use-after-scorch and double-scorch, naming the
+  line that scorched), `area does not exist` (out of bounds, with the block's
+  extent), and `spooked: ancient weeds` at exit for anything never scorched.
+- `hypnagogia` — a single pass before execution reporting names that are bound
+  nowhere and statements that can never run. Advisory only, and deliberately
+  timid so dynamic code is not flagged.
+- Examples: `astheno-list.mgs`, `astheno-packing.mgs`, `astheno-faults.mgs`.
+- `wiki/Asthenosphere.md`.
+
+Other additions:
+- Index assignment: `a[0] = x`, `d["k"] = v`, and the `+=` / `-=` forms. Previously
+  a parse error; lists and dicts were read-only through the index operator.
+- Recursion depth guard. Exceeding `MAX_CALL_DEPTH` (500) now raises
+  `exploding brain syndrome` with an elided stack trace instead of leaking a raw
+  Python `RecursionError`.
+
+### Changed — BREAKING
+- Empty dicts are now falsy, matching empty lists and strings. `if {}` previously
+  took the true branch.
+- Values now print with MagmaScript's spelling rather than Python's. `print(none)`
+  said `None` while `str(none)` said `none`; booleans printed as `True`/`False`.
+  All display — `print`, `echo`, f-strings, `str()`, `spooked` — goes through one
+  function, and containers render recursively (`[1, none, true]`). Strings print
+  bare at the top level and quoted inside a container.
+- The `f` string prefix is now meaningful. Only `f"..."` interpolates; in a plain
+  string `{` is an ordinary character. Previously *any* string containing `{` was
+  interpolated, so `print("use {braces}")` misbehaved. This also fixes plain
+  strings containing an unmatched `{`, which previously raised
+  "Unterminated string".
+
+### Fixed
+- Errors raised inside a function body now carry the filename and caret diagram.
+  The CLI constructs its own `Interpreter`, but only the module-level `run()`
+  helper registered it globally, so function bodies executed against a blank
+  interpreter with no source text.
+- Version skew: `__init__.py` reported 2.2.0 while `pyproject.toml` reported 2.3.0.
+- The REPL crashed on Windows. `_repl_basic()` imported `readline` unguarded, so
+  the fallback path — the one taken when `prompt_toolkit` is absent — could not
+  start at all.
+- The enhanced REPL crashed on every platform with a current `prompt_toolkit`.
+  `PromptSession` was constructed with `prompt=` and `continuation=`, which are
+  not constructor arguments; they are `message=` and `prompt_continuation=`.
+
+- The test suite now passes on Windows. Nine import tests and four `quarry`/`litho`
+  tests embedded a native path into `.mgs` source, where a backslash before `t` is
+  a tab escape; they now embed POSIX-form paths, which every platform accepts.
+
+### Removed
+- `scripts/examples/top-scores.ms`, a pre-1.2.0 sketch whose header still said
+  the interpreter was unimplemented.
+
 ## [2.2.0] - 2026-08-14
 
 ### Added

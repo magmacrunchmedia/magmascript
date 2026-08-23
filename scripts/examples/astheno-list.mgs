@@ -1,0 +1,49 @@
+// astheno-list.mgs - a linked list built by hand in the arena.
+//
+// No lists, no dicts, no garbage collector. Just bytes, and pines pointing
+// at other bytes. Run it and watch bathysphere() show you the links.
+
+floorplan Node {
+    value: i32
+    next: pine[Node]
+}
+
+layout(Node)
+print("")
+
+// Build 1 -> 2 -> 3 by hand.
+head = garrison(Node)
+head.value = i32(1)
+
+second = garrison(Node)
+second.value = i32(2)
+head.next = second
+
+third = garrison(Node)
+third.value = i32(3)
+second.next = third
+third.next = none
+
+// Walk it.
+print("walking the list:")
+total = 0
+cursor = head
+while cursor != none {
+    print(f"  node holds {cursor.value}")
+    total = total + int(cursor.value)
+    cursor = cursor.next
+}
+print(f"sum = {total}")
+print("")
+
+// Look at the first node's actual bytes. The `next` field is the
+// address of the second node.
+bathysphere(head)
+print("")
+
+// Clean up. Comment out any one of these and the program will tell you
+// about the ancient weeds you left behind.
+scorch(head)
+scorch(second)
+scorch(third)
+print("all ground scorched - no leaks")

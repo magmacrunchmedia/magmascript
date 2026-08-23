@@ -306,6 +306,62 @@ See `scripts/examples/` for working examples:
 | `maintenance.mgs` | Weekly maintenance pipeline |
 | `real-domains.mgs` | Test real domain connections (MCP search, scoreboards, games) |
 | `domain-example.mgs` | Domain object overview and usage patterns |
+| `astheno-list.mgs` | A linked list built by hand in the arena |
+| `astheno-packing.mgs` | The same struct fields, two orderings, two sizes |
+| `astheno-faults.mgs` | Every memory fault, caught and named |
+
+### The Asthenosphere — explicit memory
+
+The layer beneath the lithosphere. A second tier where you manage memory
+yourself: a real byte arena, pointers, structs with visible padding, and
+integers that wrap like C's.
+
+It is not faster than the dynamic tier — an `i32` add still costs a Python
+dispatch. What it gives you instead is the thing C cannot: the interpreter sees
+every memory operation, so it catches the use-after-free, names the line that
+leaked, and hex-dumps a struct with its fields labelled. **C's behavior, but
+narrated.**
+
+```magmascript
+floorplan Point {
+    tag: u8
+    x: i32
+    y: i32
+}
+
+layout(Point)              // prints the field table, padding rows included
+
+p = garrison(Point)        // claim ground
+p.x = i32(10)
+p.y = i32(-20)
+bathysphere(p)             // annotated hex dump
+scorch(p)                  // release it
+```
+
+Widths are `i8 i16 i32 i64  u8 u16 u32 u64  f32 f64`. There is no integer
+promotion — `i32 + u8` is an error pointing you at `osmosis()` — and `/`
+truncates toward zero on integer widths, as C does.
+
+Mistakes are reported, not swallowed:
+
+```
+quicksand at demo.mgs:line 4, column 7
+    |
+  4 | x = p.peek(i32)
+    |       ^
+this ground was scorched at line 3 (garrisoned at line 1)
+```
+
+| Fault | Reported as |
+|--------|-------------|
+| touching scorched ground | `quicksand`, naming the line that scorched it |
+| reading outside a block | `area does not exist`, with the block's extent |
+| never scorching | `spooked: ancient weeds` at exit, naming each garrison line |
+| arithmetic that does not fit | `spooked`, with the exact value and the wrap |
+
+`floorplan` is the only new reserved word; everything else is a shadowable
+builtin, so existing scripts are unaffected. Full reference on the
+[Asthenosphere wiki page](https://github.com/magmacrunchmedia/magmascript/wiki/Asthenosphere).
 
 ### REPL
 
@@ -517,6 +573,7 @@ Full documentation on the [Wiki](https://github.com/magmacrunchmedia/magmascript
 - [Search Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Search-Domain)
 - [Media Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Media-Domain)
 - [Example Scripts](https://github.com/magmacrunchmedia/magmascript/wiki/Example-Scripts)
+- [Asthenosphere](https://github.com/magmacrunchmedia/magmascript/wiki/Asthenosphere)
 - [Architecture](https://github.com/magmacrunchmedia/magmascript/wiki/Architecture)
 
 ## License

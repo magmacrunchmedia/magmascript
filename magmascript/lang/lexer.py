@@ -89,7 +89,13 @@ class Lexer:
             return True
         return False
 
-    def read_string(self) -> Token:
+    def read_string(self, allow_interpolation: bool = False) -> Token:
+        """Read a string literal.
+
+        Only f-strings interpolate. In a plain string `{` is an ordinary
+        character, so it is neither scanned for a matching `}` nor tagged
+        for the parser.
+        """
         line, col = self.line, self.column
         quote = self.advance()
         parts: list[str] = []
@@ -112,7 +118,7 @@ class Lexer:
                         parts.append("{")
                     else:
                         parts.append("\\" + esc)
-            elif self.source[self.pos] == "{":
+            elif self.source[self.pos] == "{" and allow_interpolation:
                 has_interpolation = True
                 parts.append(self.advance())
                 depth = 1
@@ -245,7 +251,7 @@ class Lexer:
             elif ch.isalpha() or ch == "_":
                 token = self.read_identifier()
                 if token.value == "f" and self.peek() in ('"', "'"):
-                    string_token = self.read_string()
+                    string_token = self.read_string(allow_interpolation=True)
                     kind, value = string_token.value
                     self.tokens.append(Token(TokenType.STRING, ("interpolated", value), token.line, token.column))
                 else:

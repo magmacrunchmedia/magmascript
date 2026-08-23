@@ -224,6 +224,28 @@ class PropertyAssignment(ASTNode):
 
 
 @dataclass
+class FloorplanField(ASTNode):
+    name: str = ""
+    type_name: str = ""
+    count: int = 1
+    points_to: str = ""
+
+
+@dataclass
+class FloorplanDef(ASTNode):
+    name: str = ""
+    fields: list[FloorplanField] = field(default_factory=list)
+
+
+@dataclass
+class IndexAssignment(ASTNode):
+    object: ASTNode = field(default_factory=ASTNode)
+    index: ASTNode = field(default_factory=ASTNode)
+    value: ASTNode = field(default_factory=ASTNode)
+    op: str = "="
+
+
+@dataclass
 class MultiAssignment(ASTNode):
     targets: list[str] = field(default_factory=list)
     values: list[ASTNode] = field(default_factory=list)
