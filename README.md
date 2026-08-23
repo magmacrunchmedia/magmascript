@@ -418,7 +418,7 @@ magmascript pi traffic                       # nginx traffic analysis
 ```magmascript
 // In a .mgs script
 info = mc1.info()
-print(f"CPU: {info.cpu_usage}%, Memory: {info.memory}")
+print(f"CPU: {info.cpu_load}, Memory: {info.memory}")
 
 services = mc1.services()
 for svc in services {

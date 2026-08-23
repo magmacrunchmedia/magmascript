@@ -1,0 +1,56 @@
+// asthenosphere.mgs — the layer beneath: explicit memory
+
+// MagmaScript's second tier hands you bytes instead of objects. It is not
+// faster — it is *visible*. Everything C does silently, this narrates.
+
+// Fixed-width numbers wrap exactly like C, and say so on the way past.
+counter = u8(254)
+i = 0
+while i < 3 {
+    counter = counter + 1
+    print(f"u8 counter: {counter}")
+    i = i + 1
+}
+
+// No integer promotion, and '/' truncates toward zero the way C does.
+print(f"i32(-7) / i32(2) = {i32(-7) / i32(2)}      // the dynamic tier floors to -4")
+print("")
+
+// A floorplan is a layout diagram for a space — which is what a struct is
+// for bytes. Declared in the order a person would naturally write them:
+floorplan Loose {
+    active: u8
+    id: i64
+    kind: u8
+    score: i32
+}
+
+// The same four fields, widest first:
+floorplan Tight {
+    id: i64
+    score: i32
+    active: u8
+    kind: u8
+}
+
+layout(Loose)
+print("")
+layout(Tight)
+print("")
+
+waste = sizeof(Loose) - sizeof(Tight)
+print(f"Loose is {sizeof(Loose)} bytes, Tight is {sizeof(Tight)} bytes")
+print(f"Reordering saved {waste} bytes each — {waste * 1000} across a thousand.")
+print("")
+
+// garrison() claims ground; scorch() burns it when you are done.
+p = garrison(Tight)
+p.id = i64(305419896)
+p.score = i32(-1)
+p.active = u8(1)
+p.kind = u8(2)
+
+// Descend and look at the actual bytes.
+bathysphere(p)
+
+scorch(p)

@@ -4,7 +4,7 @@ Direct client for managing a Windows PC (MC1) over SSH with PowerShell.
 
 ## Configuration
 
-Add to `.magmascript.toml`:
+Add to `~/.config/magmascript/config.toml`:
 
 ```toml
 [mc1]
@@ -12,13 +12,13 @@ host = "100.75.220.87"
 user = "magma"
 ```
 
-Or set environment variables: `MAGMASCRIPT_MC1_HOST`, `MAGMASCRIPT_MC1_USER`.
+Or set environment variables: `MAGMA_MC1_HOST`, `MAGMA_MC1_USER`.
 
-## CLI Usage
+## Script Usage
 
 ```magmascript
 info = mc1.info()
-print(f"CPU: {info.cpu_usage}%, Memory: {info.memory}")
+print(f"CPU: {info.cpu_load}, Memory: {info.memory}")
 
 services = mc1.services()
 for svc in services {
@@ -67,6 +67,7 @@ for svc in services {
 |-------|------|-------------|
 | `name` | `str` | Service name |
 | `status` | `str` | `"Running"` |
+| `ok` | `bool` | Whether the service is running |
 
 ### MC1SystemInfo
 
@@ -75,11 +76,11 @@ for svc in services {
 | `hostname` | `str` | Computer name |
 | `uptime` | `str` | Uptime string (e.g. `"3.05:22:10"`) |
 | `memory` | `str` | Total/used (e.g. `"31.5GB/18.2GB"`) |
-| `cpu_usage` | `int` | CPU load percentage |
+| `cpu_load` | `str` | CPU load, percent included (e.g. `"4%"`) |
 | `disk_free` | `str` | Disk free percentage (e.g. `"45.2% free"`) |
 | `disk_free_gb` | `str` | Disk free in GB (e.g. `"234.5GB"`) |
 | `cpu_name` | `str` | CPU model (e.g. `"Intel Core i7-12700K"`) |
-| `cpu_cores` | `int` | Number of physical cores |
+| `cpu_cores` | `str` | Number of physical cores |
 | `os_version` | `str` | Windows version (e.g. `"Microsoft Windows 11 Pro"`) |
 
 ### MC1PowerSettings
