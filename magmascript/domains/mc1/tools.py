@@ -133,11 +133,16 @@ def parse_system_info(text: str) -> MC1SystemInfo:
         "disk_free": "", "disk_free_gb": "", "cpu_name": "",
         "cpu_cores": "", "os_version": "",
     }
+    # The PowerShell emits CPU: and DISK:, but the dataclass fields are
+    # cpu_load and disk_free. Map the emitted keys to the fields so those two
+    # are not silently dropped.
+    aliases = {"cpu": "cpu_load", "disk": "disk_free"}
     for line in text.splitlines():
         line = line.strip()
         if ":" in line:
             key, val = line.split(":", 1)
             key = key.lower().strip()
+            key = aliases.get(key, key)
             val = val.strip()
             if key in info:
                 info[key] = val

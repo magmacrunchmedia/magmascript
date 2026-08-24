@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.0] - 2026-08-23
+
+### Added
+- **Mac domain** — manage a Mac over SSH, mirroring the pi and mc1 domains:
+  `mac.info()`, `mac.processes()`, `mac.git_status()`, `mac.git_pull()`, and
+  `mac.run()`, from `.mgs` scripts and the CLI (`magmascript mac ...`). Reuses
+  `CommandRunner`; configured via `[mac]` / `MAGMA_MAC_HOST` / `MAGMA_MAC_USER`.
+- **mc1 CLI** — the mc1 domain finally has a `cli.py` branch. `magmascript mc1
+  status | info | processes | restart | power | set-power-mode | wake | reboot`
+  all work; before this they exited 1 with "Unknown domain: 'mc1'".
+- Tests for the mc1 domain (parsers, uptime formatting, registration) — it had
+  none. 24 tests.
+
+### Fixed
+- `mc1 info` returned a blank `cpu_load` and `disk_free` on every call. The
+  PowerShell emits `CPU:` and `DISK:` but the parser only accepted the field
+  names `cpu_load` / `disk_free`, so both were silently dropped. The parser now
+  maps the emitted keys to the fields.
+
 ## [3.0.1] - 2026-08-23
 
 A documentation release. Nothing under `magmascript/` changed, so the wheel is
