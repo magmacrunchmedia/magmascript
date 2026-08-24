@@ -3,13 +3,38 @@ from __future__ import annotations
 from dataclasses import fields, is_dataclass
 from typing import Any
 
-from magmascript.core.registry import get_domain, list_domains
+from magmascript.core.registry import get_domain, list_domains, register_domain
+
+# Packages outside this repo publish domains under this entry-point group.
+ENTRY_POINT_GROUP = "magmascript.domains"
 
 
 class DomainProxy:
-    def __init__(self, name: str, client: Any) -> None:
-        self._name = name
-        self._client = client
+    """A domain, exposed to scripts under its name.
+
+    The client is built on first use, not at interpreter startup. Every domain
+    used to be constructed for every script and every REPL session, which cost
+    startup time for domains nobody touched and ruled out any domain whose
+    construction does something — opening a window, holding a socket.
+    """
+
+    def __init__(self, name: str, client: Any = None, *,
+                 factory: Any = None) -> None:
+        object.__setattr__(self, "_name", name)
+        object.__setattr__(self, "_factory", factory)
+        object.__setattr__(self, "_client_cache", client)
+
+    @property
+    def _client(self) -> Any:
+        client = object.__getattribute__(self, "_client_cache")
+        if client is None:
+            factory = object.__getattribute__(self, "_factory")
+            if factory is None:
+                name = object.__getattribute__(self, "_name")
+                raise AttributeError(f"domain '{name}' has no client")
+            client = factory()
+            object.__setattr__(self, "_client_cache", client)
+        return client
 
     def __getattr__(self, name: str) -> Any:
         if name.startswith("_"):
@@ -26,9 +51,12 @@ class DomainProxy:
         return wrapper
 
     def close(self) -> None:
-        if hasattr(self._client, "close"):
+        # Only a client that was actually built can need closing, and touching
+        # self._client here would construct one just to tear it down.
+        client = object.__getattribute__(self, "_client_cache")
+        if client is not None and hasattr(client, "close"):
             try:
-                self._client.close()
+                client.close()
             except Exception:
                 pass
 
@@ -45,11 +73,22 @@ class DataclassWrapper:
 
     def __getattr__(self, name: str) -> Any:
         obj = object.__getattribute__(self, "_obj")
+        if name.startswith("_"):
+            raise AttributeError(name)
         if is_dataclass(obj) and not isinstance(obj, type):
             for f in fields(obj):
                 if f.name == name:
                     return wrap_result(getattr(obj, name))
-        raise AttributeError(f"'{type(obj).__name__}' has no attribute '{name}'")
+        # Not a field, but dataclasses carry properties and methods too, and a
+        # script has no way to tell which is which. InputState.dx and
+        # ControllerState.up are properties over the fields; without this a
+        # script could read the raw buttons byte but not the buttons.
+        try:
+            return wrap_result(getattr(obj, name))
+        except AttributeError:
+            raise AttributeError(
+                f"'{type(obj).__name__}' has no attribute '{name}'"
+            ) from None
 
     def __repr__(self) -> str:
         obj = object.__getattribute__(self, "_obj")
@@ -102,18 +141,58 @@ def wrap_result(result: Any) -> Any:
     return result
 
 
-def create_domain_proxies() -> dict[str, DomainProxy]:
-    from magmascript.core.config import get_config
+def _domain_factory(name: str) -> Any:
+    """Build the thunk that constructs one domain's client on first use.
 
-    proxies = {}
-    config = get_config()
+    A constructor that raises now surfaces at the call that needed it, rather
+    than the domain silently not existing and the script reporting an undefined
+    variable several lines later.
+    """
 
-    for name in list_domains():
+    def build() -> Any:
+        from magmascript.core.config import get_config
+
+        return get_domain(name)(get_config())
+
+    return build
+
+
+def discover_domains() -> None:
+    """Register domains published by other installed packages.
+
+    A package declares one in its own metadata::
+
+        [project.entry-points."magmascript.domains"]
+        texastoast = "texastoast.mgs:TexastoastDomain"
+
+    which is what lets a domain live in the project it belongs to rather than
+    in this repo. Built-ins win on a name clash, and a broken entry point is
+    skipped rather than taking the interpreter down with it.
+    """
+    from importlib.metadata import entry_points
+
+    try:
+        found = entry_points(group=ENTRY_POINT_GROUP)
+    except Exception:
+        # Broken installed metadata is not this interpreter's problem to solve,
+        # and must not stop a script that uses only built-in domains.
+        return
+
+    builtins = set(list_domains())
+    for entry in found:
+        if entry.name in builtins:
+            continue
         try:
-            client_class = get_domain(name)
-            client = client_class(config)
-            proxies[name] = DomainProxy(name, client)
+            register_domain(entry.name, entry.load())
         except Exception:
-            pass
+            # A third-party package that fails to import must not stop a script
+            # that never mentions it from running.
+            continue
 
-    return proxies
+
+def create_domain_proxies() -> dict[str, DomainProxy]:
+    discover_domains()
+    return {
+        name: DomainProxy(name, factory=_domain_factory(name))
+        for name in list_domains()
+    }

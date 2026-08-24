@@ -1110,6 +1110,24 @@ class Interpreter:
             obj[node.property] = value
             return value
 
+        # A host object from a domain — a game entity, a config, anything the
+        # bridge handed back. Reading its attributes already works
+        # (exec_PropertyAccess falls through to getattr), so writing them has
+        # to as well, or a script can inspect an object and never change it.
+        if not node.property.startswith("_") and hasattr(obj, node.property):
+            if isinstance(value, astheno.Fixed):
+                # Widths are an Asthenosphere concept. Handing one to a host
+                # object poisons its arithmetic downstream, so store the number.
+                value = value.value
+            try:
+                setattr(obj, node.property, value)
+            except AttributeError as e:
+                raise self.error(
+                    f"Cannot set '{node.property}' on {type(obj).__name__}: {e}",
+                    node,
+                ) from None
+            return value
+
         raise self.error(
             f"Cannot set property on {type(obj).__name__}",
             node,

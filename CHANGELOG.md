@@ -5,6 +5,54 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.0] - 2026-08-24
+
+Host objects handed to a script were half-usable: you could call their methods
+and read their fields, but not read their properties or change anything. This
+release closes that gap and lets packages outside this repo publish domains of
+their own — the first is [texastoast](https://github.com/magmacrunchmedia/texastoast),
+which exposes a game engine as the `toast` domain.
+
+### Added
+- **Domains can be published by other packages.** A package declares one in its
+  own metadata and it appears in scripts and the REPL:
+
+  ```toml
+  [project.entry-points."magmascript.domains"]
+  texastoast = "texastoast.mgs:TexastoastDomain"
+  ```
+
+  Built-in domains win a name clash, and an entry point that fails to import is
+  skipped rather than taking the interpreter down with it. This is what lets a
+  domain live in the project it belongs to instead of in this repo.
+- `DomainProxy` accepts a `factory=` for lazy construction, and
+  `discover_domains()` performs the entry-point scan.
+
+### Fixed
+- **Scripts can now set attributes on host objects.** `player.speed = 200` on
+  an object from a domain raised `Cannot set property on Entity`, even though
+  `player.speed` read back fine — a script could inspect an object and never
+  change it. Attributes that exist and are not private are now settable, and
+  a fixed-width value is unwrapped to a plain number on the way in so it does
+  not poison the host's arithmetic. Writing an unknown or private attribute is
+  still an error, and a read-only property reports the line that tried.
+- **Properties on wrapped dataclasses are readable.** `DataclassWrapper` only
+  walked `dataclasses.fields()`, so anything derived — `InputState.dx`,
+  `ControllerState.up` — raised `AttributeError`. It was also inconsistent:
+  plain classes pass through unwrapped, so *their* properties always worked.
+  Methods on dataclasses are reachable for the same reason.
+
+### Changed
+- **Domain clients are built on first use, not at startup.** Every domain was
+  constructed for every script and every REPL session, paying for domains
+  nobody touched and ruling out any domain whose construction does something —
+  opening a window, holding a socket. `DomainProxy.close()` no longer builds a
+  client just to tear it down.
+
+  One visible consequence: a domain whose constructor raises used to be dropped
+  silently, so a script using it failed with `Undefined variable`. The real
+  error now surfaces at the call that needed the domain.
+
 ## [3.1.1] - 2026-08-23
 
 ### Changed

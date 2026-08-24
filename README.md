@@ -549,6 +549,35 @@ magmascript toast search-index               # Remove search index
 magmascript toast all                        # Clear everything
 ```
 
+### Domains from other packages
+
+A package can publish its own domain by declaring an entry point; it then
+appears in `.mgs` scripts and the REPL without any change to magmascript.
+
+```toml
+# in the other package's pyproject.toml
+[project.entry-points."magmascript.domains"]
+texastoast = "texastoast.mgs:TexastoastDomain"
+```
+
+The value names a class taking a single `config` argument. It is constructed on
+first use, not at startup, so a domain may hold real resources. Built-in domains
+win a name clash, and an entry point that fails to import is skipped rather than
+breaking the interpreter.
+
+[texastoast](https://github.com/magmacrunchmedia/texastoast) is the first:
+`pip install texastoast` and `.mgs` scripts can drive a game engine. It
+registers under two names, `texastoast` and the shorter `tt`.
+
+```magmascript
+g = tt.game({"title": "hello", "width": 400, "height": 300})
+```
+
+A package may register the same class under several names this way; nothing
+stops it, and the clients stay independent. Note that none of this touches the
+`magmascript toast` CLI verb, which still clears caches — registry domains are
+not dispatched as subcommands.
+
 ## Python Library
 
 ```python
