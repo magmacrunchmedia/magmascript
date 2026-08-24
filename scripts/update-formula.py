@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -29,6 +30,17 @@ PYPI_SOURCE = "https://files.pythonhosted.org/packages/source/m/magmascript"
 # on `python_version < "3.13"`. Resolving on the wrong version therefore writes a
 # formula with a resource list Homebrew will never match, so main() refuses.
 FORMULA_PYTHON = "3.13"
+
+
+def normalize_pypi_name(name: str) -> str:
+    """Normalize a project name the way PEP 503 does.
+
+    Sdist filenames use underscores (PEP 625), but `brew audit` wants the
+    normalized PyPI name, so "markdown_it_py" has to be written
+    "markdown-it-py". PyPI's own info.name is not a reliable source for this:
+    it reports "prompt_toolkit" while audit demands "prompt-toolkit".
+    """
+    return re.sub(r"[-_.]+", "-", name).lower()
 
 
 def sha256_of_file(path: Path) -> str:
@@ -110,11 +122,14 @@ def resolve_dependencies(version: str, sdist_path: Path,
                 pkg_version = ""
 
             # Skip the main package itself
-            if pkg_name == "magmascript":
+            if normalize_pypi_name(pkg_name) == "magmascript":
                 continue
 
             deps.append({
-                "name": pkg_name,
+                # The name as PyPI spells it in the URL, for the lookup...
+                "pypi_name": pkg_name,
+                # ...and as Homebrew wants it written in the formula.
+                "name": normalize_pypi_name(pkg_name),
                 "version": pkg_version,
                 "sha256": sha256_of_file(tarball),
             })
@@ -142,9 +157,13 @@ def get_pypi_url(package_name: str, version: str) -> str:
 
 def generate_formula(version: str, main_sha256: str, deps: list[dict]) -> str:
     """Generate the Homebrew formula content."""
+    # brew style (FormulaAudit/PyPiUrls) requires the hashed "Source" URL from
+    # the PyPI files page, not the /packages/source/m/... redirect that
+    # PYPI_SOURCE builds for downloading.
+    main_url = get_pypi_url("magmascript", version)
     resource_blocks = []
     for dep in deps:
-        url = get_pypi_url(dep["name"], dep["version"])
+        url = get_pypi_url(dep.get("pypi_name", dep["name"]), dep["version"])
         resource_blocks.append(f'''  resource "{dep["name"]}" do
     url "{url}"
     sha256 "{dep["sha256"]}"
@@ -157,7 +176,7 @@ def generate_formula(version: str, main_sha256: str, deps: list[dict]) -> str:
 
   desc "Scripting toolkit with domain-first subcommands"
   homepage "https://github.com/magmacrunchmedia/magmascript"
-  url "https://files.pythonhosted.org/packages/source/m/magmascript/magmascript-{version}.tar.gz"
+  url "{main_url}"
   sha256 "{main_sha256}"
   license "MIT"
 
