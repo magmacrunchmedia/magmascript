@@ -23,6 +23,13 @@ from urllib.request import urlretrieve
 
 PYPI_SOURCE = "https://files.pythonhosted.org/packages/source/m/magmascript"
 
+# The Python the generated formula builds against. Dependencies are resolved by
+# whichever interpreter runs this script, and environment markers make that
+# choice visible in the output — anyio, for one, requires typing_extensions only
+# on `python_version < "3.13"`. Resolving on the wrong version therefore writes a
+# formula with a resource list Homebrew will never match, so main() refuses.
+FORMULA_PYTHON = "3.13"
+
 
 def sha256_of_file(path: Path) -> str:
     h = hashlib.sha256()
@@ -49,23 +56,43 @@ def download_sdist(version: str, dest: Path, retries: int = 5, delay: int = 15) 
                 raise
 
 
-def resolve_dependencies(version: str, sdist_path: Path) -> list[dict]:
+def resolve_dependencies(version: str, sdist_path: Path,
+                         retries: int = 5, delay: int = 15) -> list[dict]:
     """Use pip download to resolve all dependencies and return their metadata."""
     with tempfile.TemporaryDirectory() as tmpdir:
         tmpdir = Path(tmpdir)
 
-        # Download the package itself plus all deps as sdists
-        # Include [cli] extras for prompt_toolkit and pygments
-        subprocess.run(
-            [
-                sys.executable, "-m", "pip", "download",
-                "--no-binary", ":all:",
-                "--dest", str(tmpdir),
-                f"magmascript[cli]=={version}",
-            ],
-            check=True,
-            capture_output=True,
-        )
+        # Download the package itself plus all deps as sdists.
+        # Include [cli] extras for prompt_toolkit and pygments.
+        #
+        # Retried on the same schedule as download_sdist(). A freshly published
+        # version reaches the file CDN before it resolves through the index, so
+        # this is the call that fails when the release is only minutes old —
+        # download_sdist() succeeds and then this raises a moment later.
+        for attempt in range(retries):
+            print(f"Resolving dependencies (attempt {attempt + 1}/{retries}) ...")
+            result = subprocess.run(
+                [
+                    sys.executable, "-m", "pip", "download",
+                    "--no-binary", ":all:",
+                    "--dest", str(tmpdir),
+                    f"magmascript[cli]=={version}",
+                ],
+                capture_output=True,
+                text=True,
+            )
+            if result.returncode == 0:
+                break
+            if attempt < retries - 1:
+                wait = delay * (2 ** attempt)
+                print(f"  pip download failed, waiting {wait}s ...")
+                time.sleep(wait)
+            else:
+                # Without this the log shows a bare CalledProcessError and the
+                # actual reason has to be reproduced by hand.
+                sys.stderr.write(result.stdout)
+                sys.stderr.write(result.stderr)
+                result.check_returncode()
 
         deps = []
         for tarball in sorted(tmpdir.glob("*.tar.gz")):
@@ -134,7 +161,7 @@ def generate_formula(version: str, main_sha256: str, deps: list[dict]) -> str:
   sha256 "{main_sha256}"
   license "MIT"
 
-  depends_on "python@3.13"
+  depends_on "python@{FORMULA_PYTHON}"
 
 {resources_str}
 
@@ -149,10 +176,28 @@ end
 '''
 
 
+def check_python_matches_formula() -> None:
+    """Refuse to resolve dependencies on the wrong Python."""
+    running = f"{sys.version_info.major}.{sys.version_info.minor}"
+    if running == FORMULA_PYTHON:
+        return
+    sys.exit(
+        "\n".join([
+            "This script resolves dependencies with the Python running it, but "
+            f"the formula pins python@{FORMULA_PYTHON} and this is Python {running}.",
+            "Environment markers differ between the two, so the resource list "
+            "would not match what Homebrew builds.",
+            f"Re-run with Python {FORMULA_PYTHON}.",
+        ])
+    )
+
+
 def main():
     if len(sys.argv) != 3:
         print(__doc__.strip())
         sys.exit(1)
+
+    check_python_matches_formula()
 
     version = sys.argv[1]
     formula_path = Path(sys.argv[2])
