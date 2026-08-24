@@ -1,6 +1,6 @@
 """magmascript — a scripting toolkit with domain-first subcommands."""
 
-__version__ = "3.1.0"
+__version__ = "3.1.1"
 
 from magmascript.core.config import Config, GHConfig, MediaConfig, MC1Config, PIConfig, get_config, load_config, set_config
 from magmascript.core.registry import get_domain, list_domains, register_domain

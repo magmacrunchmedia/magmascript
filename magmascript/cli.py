@@ -409,16 +409,26 @@ def _dispatch_configure(action: str, args: list[str]):
 Fetch the API key from the MCP server and write to config file.
 
 Options:
-    --host HOST    SSH host to fetch key from (default: jake@192.168.1.16)
+    --host HOST    SSH host to fetch the key from, as user@host (required)
     --help         Show this help
 """)
         sys.exit(0)
 
-    host = "jake@192.168.1.16"
+    host = ""
     if "--host" in args:
         idx = args.index("--host")
         if idx + 1 < len(args):
             host = args[idx + 1]
+
+    if not host:
+        print(
+            "Error: configure needs an explicit SSH target.\n"
+            "  magmascript configure --host user@host\n"
+            "Or set the MCP API key directly: MAGMA_API_KEY in the environment, "
+            "or [mcp] api_key in ~/.config/magmascript/config.toml",
+            file=sys.stderr,
+        )
+        sys.exit(1)
 
     print(f"Fetching API key from {host}...")
 

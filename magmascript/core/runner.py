@@ -16,8 +16,8 @@ class CommandRunner:
     """Execute shell commands locally or via SSH.
 
     Args:
-        host: Remote host (e.g. "192.168.1.16"). Ignored in local mode.
-        user: Remote user (e.g. "jake"). Ignored in local mode.
+        host: Remote host (e.g. "pi.local" or a Tailscale IP). Ignored in local mode.
+        user: Remote user. Ignored in local mode.
         local: If True, run commands locally via subprocess instead of SSH.
     """
 
@@ -33,6 +33,12 @@ class CommandRunner:
         """
         if self._local:
             return self._local_run(cmd, timeout=timeout)
+        if not self._host:
+            raise SSHError(
+                "no SSH host configured — set the domain's host in "
+                "~/.config/magmascript/config.toml or the MAGMA_*_HOST env var",
+                host="",
+            )
         return self._ssh(cmd, timeout=timeout)
 
     def _local_run(self, cmd: str, *, timeout: int = 15) -> str:

@@ -10,6 +10,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 
+# The MCP server is a public endpoint, so it stays a usable default. SSH
+# host/user defaults are intentionally empty — a fresh install must be told
+# which machines to reach rather than probing someone else's network.
 DEFAULT_MCP_URL = "https://magmacrunch.duckdns.org/mcp"
 CONFIG_DIR = Path.home() / ".config" / "magmascript"
 CONFIG_FILE = CONFIG_DIR / "config.toml"
@@ -27,24 +30,24 @@ class MCPConfig:
 class PIConfig:
     """Raspberry Pi SSH configuration."""
 
-    host: str = "192.168.1.16"
-    user: str = "jake"
+    host: str = ""
+    user: str = ""
 
 
 @dataclass
 class MC1Config:
     """MC1 Windows PC SSH configuration."""
 
-    host: str = "100.75.220.87"
-    user: str = "magma"
+    host: str = ""
+    user: str = ""
 
 
 @dataclass
 class MacConfig:
     """Mac SSH configuration (a MacBook on the Tailnet)."""
 
-    host: str = "100.81.70.91"
-    user: str = "jakemccoy"
+    host: str = ""
+    user: str = ""
 
 
 @dataclass
@@ -52,8 +55,8 @@ class GHConfig:
     """GitHub API configuration."""
 
     token: str = ""
-    owner: str = "magmacrunchmedia"
-    repo: str = "magmacrunch.com"
+    owner: str = ""
+    repo: str = ""
 
 
 @dataclass
@@ -146,23 +149,23 @@ def load_config(*, config_path: Path | None = None, env_prefix: str = "MAGMA_") 
             or mcp_section.get("api_key", ""),
         ),
         pi=PIConfig(
-            host=os.environ.get(f"{env_prefix}PI_HOST", pi_section.get("host", "192.168.1.16")),
-            user=os.environ.get(f"{env_prefix}PI_USER", pi_section.get("user", "jake")),
+            host=os.environ.get(f"{env_prefix}PI_HOST", pi_section.get("host", "")),
+            user=os.environ.get(f"{env_prefix}PI_USER", pi_section.get("user", "")),
         ),
         mc1=MC1Config(
-            host=os.environ.get(f"{env_prefix}MC1_HOST", mc1_section.get("host", "100.75.220.87")),
-            user=os.environ.get(f"{env_prefix}MC1_USER", mc1_section.get("user", "magma")),
+            host=os.environ.get(f"{env_prefix}MC1_HOST", mc1_section.get("host", "")),
+            user=os.environ.get(f"{env_prefix}MC1_USER", mc1_section.get("user", "")),
         ),
         mac=MacConfig(
-            host=os.environ.get(f"{env_prefix}MAC_HOST", mac_section.get("host", "100.81.70.91")),
-            user=os.environ.get(f"{env_prefix}MAC_USER", mac_section.get("user", "jakemccoy")),
+            host=os.environ.get(f"{env_prefix}MAC_HOST", mac_section.get("host", "")),
+            user=os.environ.get(f"{env_prefix}MAC_USER", mac_section.get("user", "")),
         ),
         gh=GHConfig(
             token=os.environ.get(f"{env_prefix}GH_TOKEN")
             or os.environ.get("GITHUB_TOKEN", "")
             or gh_section.get("token", ""),
-            owner=os.environ.get(f"{env_prefix}GH_OWNER", gh_section.get("owner", "magmacrunchmedia")),
-            repo=os.environ.get(f"{env_prefix}GH_REPO", gh_section.get("repo", "magmacrunch.com")),
+            owner=os.environ.get(f"{env_prefix}GH_OWNER", gh_section.get("owner", "")),
+            repo=os.environ.get(f"{env_prefix}GH_REPO", gh_section.get("repo", "")),
         ),
         media=MediaConfig(
             pexels_key=os.environ.get(f"{env_prefix}PEXELS_KEY", media_section.get("pexels_key", "")),

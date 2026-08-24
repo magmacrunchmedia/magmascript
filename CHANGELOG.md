@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.1.1] - 2026-08-23
+
+### Changed
+- Neutralized the private infrastructure defaults that shipped in the public
+  package. The SSH host/user defaults for the `pi`, `mc1`, and `mac` domains, and
+  the `gh` owner/repo, are now empty rather than baking in magmacrunch's own
+  hosts, Tailscale IPs, and usernames. A fresh `pip install` no longer probes a
+  stranger's machines, and personal network topology is no longer published on
+  PyPI. The magmacrunch.com values live on as examples in the README and wiki;
+  set your own via `~/.config/magmascript/config.toml` or `MAGMA_*` env vars.
+  The MCP server URL stays a default — it is a public endpoint.
+- A domain call with no host configured now raises a clear "no SSH host
+  configured" error pointing at the config, instead of a confusing SSH failure.
+- `magmascript configure` requires an explicit `--host user@host` rather than
+  defaulting to a personal machine.
+
 ## [3.1.0] - 2026-08-23
 
 ### Added
