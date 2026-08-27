@@ -175,7 +175,7 @@ def generate_formula(version: str, main_sha256: str, deps: list[dict]) -> str:
   include Language::Python::Virtualenv
 
   desc "Scripting toolkit with domain-first subcommands"
-  homepage "https://github.com/magmacrunchmedia/magmascript"
+  homepage "https://magmacrunch.com/ware/magmascript/"
   url "{main_url}"
   sha256 "{main_sha256}"
   license "MIT"

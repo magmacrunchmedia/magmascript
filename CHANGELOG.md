@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.2.1] - 2026-08-25
+
+### Changed
+- The project homepage is now <https://magmacrunch.com/ware/magmascript/>. PyPI
+  renders the metadata of the newest release only, so the link there follows
+  this release rather than the one it was edited in. The GitHub repository,
+  wiki, and changelog are now listed separately alongside it, and the Homebrew
+  formula points at the same homepage.
+
 ## [3.2.0] - 2026-08-24
 
 Host objects handed to a script were half-usable: you could call their methods

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "magmascript"
-version = "3.2.0"
+version = "3.2.1"
 description = "Scripting toolkit with domain-first subcommands"
 readme = "README.md"
 license = "MIT"
@@ -48,8 +48,10 @@ all = [
 magmascript = "magmascript.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/magmacrunchmedia/magmascript"
+Homepage = "https://magmacrunch.com/ware/magmascript/"
+Documentation = "https://github.com/magmacrunchmedia/magmascript/wiki"
 Repository = "https://github.com/magmacrunchmedia/magmascript"
+Changelog = "https://github.com/magmacrunchmedia/magmascript/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 include = ["magmascript*"]
