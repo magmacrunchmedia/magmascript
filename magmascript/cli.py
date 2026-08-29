@@ -182,6 +182,63 @@ def _cmd_cache(action: str, args: list[str], fmt: str) -> None:
     _dispatch_cache(action, args, fmt)
 
 
+@register("codegen", "Generate C code from .mgs files")
+def _cmd_codegen(action: str, args: list[str], fmt: str) -> None:
+    """Dispatch codegen subcommands."""
+    if not action or action == "--help":
+        print("""Generate C code from MagmaScript (.mgs) files.
+
+Usage:
+    magmascript codegen <file.mgs>           Generate C to stdout
+    magmascript codegen <file.mgs> -o out.c  Generate C to file
+
+Options:
+    --help    Show this help
+""")
+        sys.exit(0)
+
+    from pathlib import Path
+    script_path = Path(action)
+    if not script_path.exists():
+        print(f"Error: File not found: {script_path}", file=sys.stderr)
+        sys.exit(1)
+
+    if not script_path.suffix == ".mgs":
+        print(f"Warning: File does not have .mgs extension: {script_path}", file=sys.stderr)
+
+    try:
+        source = script_path.read_text(encoding="utf-8")
+        from magmascript.lang.lexer import Lexer
+        from magmascript.lang.parser import Parser
+        from magmascript.codegen import generate_c
+
+        filename = str(script_path)
+        tokens = Lexer(source, filename=filename).tokenize()
+        program = Parser(tokens, source=source, filename=filename).parse()
+
+        c_code = generate_c(program)
+
+        # Check for -o flag
+        output_file = None
+        if "-o" in args:
+            idx = args.index("-o")
+            if idx + 1 < len(args):
+                output_file = args[idx + 1]
+
+        if output_file:
+            Path(output_file).write_text(c_code)
+            print(f"Generated {output_file}")
+        else:
+            print(c_code)
+
+    except Exception as e:
+        if hasattr(e, "format"):
+            print(e.format(), file=sys.stderr)
+        else:
+            print(f"Error: {e}", file=sys.stderr)
+        sys.exit(1)
+
+
 def usage():
     print("""magmascript — scripting toolkit with domain-first subcommands
 
