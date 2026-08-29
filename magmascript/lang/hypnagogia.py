@@ -16,14 +16,17 @@ what cannot be explained away by control flow:
 Findings are warnings, not errors: a program that has always worked keeps
 working. Floorplan and width faults stay where they are, raised for real when
 the declaration is executed.
+
+Custom rules can be registered via ``register_rule()``.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from magmascript.lang import ast_nodes as ast
 from magmascript.lang.util import suggest
+from magmascript.lang.visitor import Visitor, children
 
 
 @dataclass
@@ -40,18 +43,46 @@ class Finding:
 TERMINATORS = (ast.ReturnStatement, ast.BreakStatement, ast.ContinueStatement)
 
 
-class Hypnagogia:
+# -- custom rule registry ------------------------------------------------
+
+_rules: list[tuple[str, callable]] = []
+
+
+def register_rule(name: str, checker: callable) -> None:
+    """Register a custom hypnagogia rule.
+
+    The checker receives (program, findings) and appends to findings.
+    """
+    _rules.append((name, checker))
+
+
+def list_rules() -> list[str]:
+    """Return names of all registered rules."""
+    return [name for name, _ in _rules]
+
+
+# -- the main pass -------------------------------------------------------
+
+class Hypnagogia(Visitor):
     def __init__(self, global_names: set[str] | None = None) -> None:
+        super().__init__()
         self.findings: list[Finding] = []
         self.globals: set[str] = set(global_names or ())
+        self._scopes: list[set[str]] = []
 
     # -- entry ----------------------------------------------------------
 
     def inspect(self, program: ast.Program) -> list[Finding]:
         bound = set(self.globals) | self._bindings(program.body)
-        self._unreachable(program.body)
+        self._scopes = [bound]
+        self._check_unreachable(program.body)
         for stmt in program.body:
-            self._walk(stmt, [bound])
+            self.visit(stmt)
+
+        # Run custom rules
+        for name, checker in _rules:
+            checker(program, self.findings)
+
         self.findings.sort(key=lambda f: (f.line, f.column))
         return self.findings
 
@@ -102,67 +133,73 @@ class Hypnagogia:
             if not node.alias and not node.names:
                 found.add(node.module.replace("/", ".").split(".")[-1])
 
-        for child in _children(node):
+        for child in children(node):
             self._collect(child, found)
 
-    # -- the walk --------------------------------------------------------
+    # -- visitor methods ------------------------------------------------
 
-    def _walk(self, node: ast.ASTNode, scopes: list[set[str]]) -> None:
-        if node is None:
-            return
+    def visit_Identifier(self, node: ast.Identifier) -> None:
+        if not any(node.name in scope for scope in self._scopes):
+            known = set().union(*self._scopes) if self._scopes else set()
+            hint = suggest(node.name, sorted(known)) if known else None
+            message = f"'{node.name}' is never given a value"
+            if hint:
+                message += f" - did you mean '{hint}'?"
+            self.findings.append(Finding(node.line, node.column, message))
 
-        if isinstance(node, ast.Identifier):
-            if not any(node.name in scope for scope in scopes):
-                known = set().union(*scopes) if scopes else set()
-                hint = suggest(node.name, sorted(known)) if known else None
-                message = f"'{node.name}' is never given a value"
-                if hint:
-                    message += f" - did you mean '{hint}'?"
-                self.findings.append(Finding(node.line, node.column, message))
-            return
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        inner = set(node.params)
+        body = node.body
+        inner |= self._bindings(getattr(body, "body", [body]))
+        for default in node.defaults.values():
+            self.visit(default)
+        self._scopes.append(inner)
+        self.visit(body)
+        self._scopes.pop()
 
-        if isinstance(node, (ast.FunctionDef, ast.ArrowFunction)):
-            inner = set(node.params)
-            body = node.body
+    def visit_ArrowFunction(self, node: ast.ArrowFunction) -> None:
+        inner = set(node.params)
+        body = node.body
+        inner |= self._bindings(getattr(body, "body", [body]))
+        for default in node.defaults.values():
+            self.visit(default)
+        self._scopes.append(inner)
+        self.visit(body)
+        self._scopes.pop()
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        for method in node.methods:
+            inner = set(method.params) | {"self"}
+            body = method.body
             inner |= self._bindings(getattr(body, "body", [body]))
-            for default in node.defaults.values():
-                self._walk(default, scopes)
-            self._walk(body, scopes + [inner])
-            return
+            self._scopes.append(inner)
+            self.visit(body)
+            self._scopes.pop()
 
-        if isinstance(node, ast.ClassDef):
-            for method in node.methods:
-                inner = set(method.params) | {"self"}
-                body = method.body
-                inner |= self._bindings(getattr(body, "body", [body]))
-                self._walk(body, scopes + [inner])
-            return
+    def visit_FloorplanDef(self, node: ast.FloorplanDef) -> None:
+        pass  # field types are checked when the declaration runs
 
-        if isinstance(node, ast.FloorplanDef):
-            return  # field types are checked when the declaration runs
+    def visit_PropertyAccess(self, node: ast.PropertyAccess) -> None:
+        self.visit(node.object)
+        # the property name is not a variable
 
-        if isinstance(node, ast.PropertyAccess):
-            self._walk(node.object, scopes)
-            return  # the property name is not a variable
+    def visit_PropertyAssignment(self, node: ast.PropertyAssignment) -> None:
+        self.visit(node.object)
+        self.visit(node.value)
 
-        if isinstance(node, ast.PropertyAssignment):
-            self._walk(node.object, scopes)
-            self._walk(node.value, scopes)
-            return
+    def visit_MethodCall(self, node: ast.MethodCall) -> None:
+        self.visit(node.object)
+        for arg in node.arguments:
+            self.visit(arg)
 
-        if isinstance(node, ast.MethodCall):
-            self._walk(node.object, scopes)
-            for arg in node.arguments:
-                self._walk(arg, scopes)
-            return
+    def visit_Block(self, node: ast.Block) -> None:
+        self._check_unreachable(node.body)
+        for child in children(node):
+            self.visit(child)
 
-        if isinstance(node, ast.Block):
-            self._unreachable(node.body)
+    # -- unreachable code -----------------------------------------------
 
-        for child in _children(node):
-            self._walk(child, scopes)
-
-    def _unreachable(self, body: list[ast.ASTNode]) -> None:
+    def _check_unreachable(self, body: list[ast.ASTNode]) -> None:
         for index, stmt in enumerate(body):
             if isinstance(stmt, TERMINATORS) and index + 1 < len(body):
                 nxt = body[index + 1]
@@ -175,18 +212,6 @@ class Hypnagogia:
                     )
                 )
                 return
-
-
-def _children(node: ast.ASTNode) -> list[ast.ASTNode]:
-    out: list[ast.ASTNode] = []
-    for value in vars(node).values():
-        if isinstance(value, ast.ASTNode):
-            out.append(value)
-        elif isinstance(value, list):
-            out.extend(v for v in value if isinstance(v, ast.ASTNode))
-        elif isinstance(value, dict):
-            out.extend(v for v in value.values() if isinstance(v, ast.ASTNode))
-    return out
 
 
 def inspect(program: ast.Program, global_names: set[str] | None = None) -> list[Finding]:

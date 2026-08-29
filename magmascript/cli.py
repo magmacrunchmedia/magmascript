@@ -11,10 +11,44 @@ from __future__ import annotations
 
 import json
 import sys
+from functools import wraps
+from typing import Callable
 
 from magmascript.core.config import get_config
 from magmascript.core.exceptions import MagmascriptError
 from magmascript.core.output import format_output
+
+
+# -- command registry ----------------------------------------------------
+
+COMMANDS: dict[str, Callable] = {}
+
+
+def register(name: str, help_text: str = "") -> Callable:
+    """Decorator to register a CLI command handler.
+
+    The handler receives (action, args, fmt).
+    """
+    def decorator(fn: Callable) -> Callable:
+        COMMANDS[name] = fn
+        fn._help_text = help_text
+        return fn
+    return decorator
+
+
+def _domain_command(client_cls: type, dispatch_fn: Callable, help_text: str = "") -> Callable:
+    """Create a command handler that manages config, client lifecycle, and dispatch."""
+    def handler(action: str, args: list[str], fmt: str) -> None:
+        config = get_config()
+        client = client_cls(config)
+        try:
+            dispatch_fn(action, args, client, fmt)
+        finally:
+            close = getattr(client, "close", None)
+            if close:
+                close()
+    handler._help_text = help_text
+    return handler
 
 
 def _generate_channels_js(channels: list[dict]) -> str:
@@ -28,6 +62,124 @@ def _generate_channels_js(channels: list[dict]) -> str:
             ', year: ' + json.dumps(ch.get("year", "")) + ' }'
         )
     return 'window.TV_CHANNELS = [\n' + ',\n'.join(lines) + '\n];\n'
+
+
+# -- register domain commands --------------------------------------------
+
+def _register_domains():
+    from magmascript.domains.mcp import MCPClient
+    from magmascript.domains.pi import PIClient
+    from magmascript.domains.mac import MacClient
+    from magmascript.domains.mc1 import MC1Client
+    from magmascript.domains.gh import GHClient
+    from magmascript.domains.media import MediaClient
+    from magmascript.domains.scores import ScoresClient
+    from magmascript.domains.rights import RightsClient
+    from magmascript.domains.archive import ArchiveClient
+    from magmascript.domains.mb import MusicBrainzClient
+    from magmascript.domains.lastfm import LastFmClient
+    from magmascript.domains.search import SearchClient
+
+    register("mcp")(_domain_command(MCPClient, _dispatch_mcp))
+    register("pi")(_domain_command(PIClient, _dispatch_pi))
+    register("mac")(_domain_command(MacClient, _dispatch_mac))
+    register("mc1")(_domain_command(MC1Client, _dispatch_mc1))
+    register("gh")(_domain_command(GHClient, _dispatch_gh))
+    register("media")(_domain_command(MediaClient, _dispatch_media))
+    register("scores")(_domain_command(ScoresClient, _dispatch_scores))
+    register("rights")(_domain_command(RightsClient, _dispatch_rights))
+
+    def _archive_handler(action, args, fmt):
+        from pathlib import Path
+        config = get_config()
+        project_root = Path(config.project.root) if config.project.root else None
+        client = ArchiveClient(project_root=project_root)
+        _dispatch_archive(action, args, client, fmt)
+
+    register("archive", "Archive page operations")(_archive_handler)
+
+    def _mb_handler(action, args, fmt):
+        from pathlib import Path
+        config = get_config()
+        project_root = Path(config.project.root) if config.project.root else None
+        client = MusicBrainzClient(project_root=project_root)
+        try:
+            _dispatch_mb(action, args, client, fmt)
+        finally:
+            client.close()
+
+    register("mb", "MusicBrainz API client")(_mb_handler)
+
+    def _lastfm_handler(action, args, fmt):
+        from pathlib import Path
+        config = get_config()
+        project_root = Path(config.project.root) if config.project.root else None
+        try:
+            client = LastFmClient(project_root=project_root)
+        except MagmascriptError as e:
+            if action and action != "--help":
+                print(f"Error: {e}", file=sys.stderr)
+                sys.exit(1)
+            client = None
+        try:
+            _dispatch_lastfm(action, args, client, fmt)
+        finally:
+            if client:
+                client.close()
+
+    register("lastfm", "Last.fm API client")(_lastfm_handler)
+
+    def _search_handler(action, args, fmt):
+        from pathlib import Path
+        config = get_config()
+        project_root = Path(config.project.root) if config.project.root else None
+        client = SearchClient(project_root=project_root)
+        _dispatch_search(action, args, client, fmt)
+
+    register("search", "Site search index builder")(_search_handler)
+
+
+# -- register built-in meta commands ------------------------------------
+
+@register("run", "Run a MagmaScript (.mgs) file")
+def _cmd_run(action: str, args: list[str], fmt: str) -> None:
+    _dispatch_run(action, args)
+
+
+@register("repl", "Start interactive MagmaScript REPL")
+def _cmd_repl(action: str, args: list[str], fmt: str) -> None:
+    from magmascript.repl import repl
+    repl()
+
+
+@register("configure", "Fetch API key from MCP server")
+def _cmd_configure(action: str, args: list[str], fmt: str) -> None:
+    _dispatch_configure(action, args)
+
+
+@register("magma", "Show system status dashboard")
+def _cmd_magma(action: str, args: list[str], fmt: str) -> None:
+    _dispatch_magma(action, fmt)
+
+
+@register("crunch", "Run a batch pipeline")
+def _cmd_crunch(action: str, args: list[str], fmt: str) -> None:
+    _dispatch_crunch(action, args, fmt)
+
+
+@register("texas", "Full/heavy operation")
+def _cmd_texas(action: str, args: list[str], fmt: str) -> None:
+    _dispatch_texas(action, args, fmt)
+
+
+@register("toast", "Burn/clear caches")
+def _cmd_toast(action: str, args: list[str], fmt: str) -> None:
+    _dispatch_toast(action, args, fmt)
+
+
+@register("cache", "Cache management")
+def _cmd_cache(action: str, args: list[str], fmt: str) -> None:
+    _dispatch_cache(action, args, fmt)
 
 
 def usage():
@@ -197,147 +349,17 @@ def main():
         no_cache = True
         rest.remove("--no-cache")
 
-    config = get_config()
+    # Register domain commands (lazy, on first use)
+    if not COMMANDS:
+        _register_domains()
 
     try:
-        if domain == "mcp":
-            from magmascript.domains.mcp import MCPClient
-            client = MCPClient(config)
-            try:
-                _dispatch_mcp(action, rest, client, fmt)
-            finally:
-                client.close()
-
-        elif domain == "pi":
-            from magmascript.domains.pi import PIClient
-            client = PIClient(config)
-            try:
-                _dispatch_pi(action, rest, client, fmt)
-            finally:
-                client.close()
-
-        elif domain == "mac":
-            from magmascript.domains.mac import MacClient
-            client = MacClient(config)
-            try:
-                _dispatch_mac(action, rest, client, fmt)
-            finally:
-                client.close()
-
-        elif domain == "mc1":
-            from magmascript.domains.mc1 import MC1Client
-            client = MC1Client(config)
-            try:
-                _dispatch_mc1(action, rest, client, fmt)
-            finally:
-                client.close()
-
-        elif domain == "gh":
-            from magmascript.domains.gh import GHClient
-            client = GHClient(config)
-            try:
-                _dispatch_gh(action, rest, client, fmt)
-            finally:
-                client.close()
-
-        elif domain == "media":
-            from magmascript.domains.media import MediaClient
-            client = MediaClient(config)
-            try:
-                _dispatch_media(action, rest, client, fmt)
-            finally:
-                client.close()
-
-        elif domain == "scores":
-            from magmascript.domains.scores import ScoresClient
-            client = ScoresClient(config)
-            try:
-                _dispatch_scores(action, rest, client, fmt)
-            finally:
-                client.close()
-
-        elif domain == "rights":
-            from magmascript.domains.rights import RightsClient
-            client = RightsClient(config)
-            try:
-                _dispatch_rights(action, rest, client, fmt)
-            finally:
-                client.close()
-
-        elif domain == "archive":
-            from pathlib import Path
-            from magmascript.domains.archive import ArchiveClient
-            project_root = Path(config.project.root) if config.project.root else None
-            client = ArchiveClient(project_root=project_root)
-            try:
-                _dispatch_archive(action, rest, client, fmt)
-            finally:
-                pass  # ArchiveClient doesn't have a close method
-
-        elif domain == "mb":
-            from pathlib import Path
-            from magmascript.domains.mb import MusicBrainzClient
-            project_root = Path(config.project.root) if config.project.root else None
-            client = MusicBrainzClient(project_root=project_root)
-            try:
-                _dispatch_mb(action, rest, client, fmt)
-            finally:
-                client.close()
-
-        elif domain == "lastfm":
-            from pathlib import Path
-            from magmascript.domains.lastfm import LastFmClient
-            project_root = Path(config.project.root) if config.project.root else None
-            try:
-                client = LastFmClient(project_root=project_root)
-            except MagmascriptError as e:
-                if action and action != "--help":
-                    print(f"Error: {e}", file=sys.stderr)
-                    sys.exit(1)
-                client = None
-            try:
-                _dispatch_lastfm(action, rest, client, fmt)
-            finally:
-                if client:
-                    client.close()
-
-        elif domain == "search":
-            from pathlib import Path
-            from magmascript.domains.search import SearchClient
-            project_root = Path(config.project.root) if config.project.root else None
-            client = SearchClient(project_root=project_root)
-            try:
-                _dispatch_search(action, rest, client, fmt)
-            finally:
-                pass  # SearchClient doesn't have a close method
-
-        elif domain == "cache":
-            _dispatch_cache(action, rest, fmt)
-
-        elif domain == "run":
-            _dispatch_run(action, rest)
-
-        elif domain == "repl":
-            from magmascript.repl import repl
-            repl()
-
-        elif domain == "configure":
-            _dispatch_configure(action, rest)
-
-        elif domain == "magma":
-            _dispatch_magma(action, fmt)
-
-        elif domain == "crunch":
-            _dispatch_crunch(action, rest, fmt)
-
-        elif domain == "texas":
-            _dispatch_texas(action, rest, fmt)
-
-        elif domain == "toast":
-            _dispatch_toast(action, rest, fmt)
-
+        cmd = COMMANDS.get(domain)
+        if cmd:
+            cmd(action, rest, fmt)
         else:
-            print(f"Unknown domain: {domain!r}. Available: mcp, pi, gh, media, scores, rights, archive, mb, lastfm, search, cache, run, repl, configure, magma, crunch, texas, toast", file=sys.stderr)
+            available = ", ".join(sorted(COMMANDS.keys()))
+            print(f"Unknown domain: {domain!r}. Available: {available}", file=sys.stderr)
             sys.exit(1)
 
     except KeyboardInterrupt:
