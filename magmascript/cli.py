@@ -239,6 +239,37 @@ Options:
         sys.exit(1)
 
 
+@register("scaffold", "Generate project structures and boilerplate")
+def _cmd_scaffold(action: str, args: list[str], fmt: str) -> None:
+    """Dispatch scaffold subcommands."""
+    if not action or action == "--help":
+        print("""Generate MagmaScript project structures and boilerplate.
+
+Usage:
+    magmascript scaffold module <name>   Generate a new module with tests
+
+Options:
+    --help    Show this help
+""")
+        sys.exit(0)
+
+    if action == "module":
+        if not args:
+            print("Error: Module name required. Usage: magmascript scaffold module <name>", file=sys.stderr)
+            sys.exit(1)
+
+        name = args[0]
+        from magmascript.scaffold import scaffold_module
+        path = scaffold_module(name)
+        print(f"Created module: {path}")
+        print(f"  {path / name}.mgs")
+        print(f"  {path / 'tests' / f'test_{name}.mgs'}")
+
+    else:
+        print(f"Unknown scaffold type: {action!r}. Available: module", file=sys.stderr)
+        sys.exit(1)
+
+
 def usage():
     print("""magmascript — scripting toolkit with domain-first subcommands
 
