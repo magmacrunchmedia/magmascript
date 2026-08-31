@@ -59,6 +59,28 @@ class MC1Client:
         )
         return f"✓ {service} restarted"
 
+    def start_service(self, service: str) -> str:
+        """Start a Windows service.
+
+        Raises SSHError on connection failure.
+        """
+        self._runner.run(
+            f'powershell -Command "Start-Service -Name \\"{service}\\""',
+            timeout=30,
+        )
+        return f"✓ {service} started"
+
+    def stop_service(self, service: str) -> str:
+        """Stop a Windows service.
+
+        Raises SSHError on connection failure.
+        """
+        self._runner.run(
+            f'powershell -Command "Stop-Service -Name \\"{service}\\" -Force"',
+            timeout=30,
+        )
+        return f"✓ {service} stopped"
+
     # ------------------------------------------------------------------
     # System info
     # ------------------------------------------------------------------

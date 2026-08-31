@@ -262,7 +262,7 @@ class MCPClient:
         """Search MusicBrainz for releases by query string."""
         url = "https://musicbrainz.org/ws/2/release/"
         params = {"query": query, "fmt": "json", "limit": limit}
-        headers = {"User-Agent": "magmascript/1.3.0 (https://github.com/magmacrunch-media/magmascript)"}
+        headers = {"User-Agent": "magmascript/3.2.2 (https://github.com/magmacrunch-media/magmascript)"}
         try:
             resp = httpx.get(url, params=params, headers=headers, timeout=10.0)
             resp.raise_for_status()
@@ -275,7 +275,7 @@ class MCPClient:
         """Get full release details including track list with recordings."""
         url = f"https://musicbrainz.org/ws/2/release/{mbid}"
         params = {"fmt": "json", "inc": "artist-credits+recordings"}
-        headers = {"User-Agent": "magmascript/1.3.0 (https://github.com/magmacrunch-media/magmascript)"}
+        headers = {"User-Agent": "magmascript/3.2.2 (https://github.com/magmacrunch-media/magmascript)"}
         try:
             resp = httpx.get(url, params=params, headers=headers, timeout=10.0)
             resp.raise_for_status()
@@ -288,7 +288,7 @@ class MCPClient:
         """Get recording details including ISRCs and work relationships."""
         url = f"https://musicbrainz.org/ws/2/recording/{mbid}"
         params = {"fmt": "json", "inc": "artist-credits+isrcs+work-rels"}
-        headers = {"User-Agent": "magmascript/1.3.0 (https://github.com/magmacrunch-media/magmascript)"}
+        headers = {"User-Agent": "magmascript/3.2.2 (https://github.com/magmacrunch-media/magmascript)"}
         try:
             resp = httpx.get(url, params=params, headers=headers, timeout=10.0)
             resp.raise_for_status()
