@@ -21,13 +21,13 @@ pipx install magmascript
 ### Homebrew (macOS / Linux)
 
 ```bash
-brew install magmacrunchmedia/tap/magmascript
+brew install magmacrunch-media/tap/magmascript
 ```
 
 ### Development
 
 ```bash
-git clone https://github.com/magmacrunchmedia/magmascript.git
+git clone https://github.com/magmacrunch-media/magmascript.git
 cd magmascript
 python3 -m venv .venv
 .venv/bin/pip install -e ".[all]"
@@ -58,7 +58,7 @@ user = "jake"
 
 [gh]
 token = "ghp_..."
-owner = "magmacrunchmedia"
+owner = "magmacrunch-media"
 repo = "magmacrunch.com"
 
 [project]
@@ -383,7 +383,7 @@ this ground was scorched at line 3 (garrisoned at line 1)
 
 `floorplan` is the only new reserved word; everything else is a shadowable
 builtin, so existing scripts are unaffected. Full reference on the
-[Asthenosphere wiki page](https://github.com/magmacrunchmedia/magmascript/wiki/Asthenosphere).
+[Asthenosphere wiki page](https://github.com/magmacrunch-media/magmascript/wiki/Asthenosphere).
 
 ### REPL
 
@@ -591,7 +591,7 @@ first use, not at startup, so a domain may hold real resources. Built-in domains
 win a name clash, and an entry point that fails to import is skipped rather than
 breaking the interpreter.
 
-[texastoast](https://github.com/magmacrunchmedia/texastoast) is the first:
+[texastoast](https://github.com/magmacrunch-media/texastoast) is the first:
 `pip install texastoast` and `.mgs` scripts can drive a game engine. It
 registers under two names, `texastoast` and the shorter `tt`.
 
@@ -640,24 +640,24 @@ gh_workflows             # GitHub commands
 
 ## Documentation
 
-Full documentation on the [Wiki](https://github.com/magmacrunchmedia/magmascript/wiki):
-- [MagmaScript Language](https://github.com/magmacrunchmedia/magmascript/wiki/MagmaScript-Language)
-- [Configuration](https://github.com/magmacrunchmedia/magmascript/wiki/Configuration)
-- [MCP Domain](https://github.com/magmacrunchmedia/magmascript/wiki/MCP-Domain)
-- [Pi Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Pi-Domain)
-- [MC1 Domain](https://github.com/magmacrunchmedia/magmascript/wiki/MC1-Domain)
-- [Mac Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Mac-Domain)
-- [GitHub Domain](https://github.com/magmacrunchmedia/magmascript/wiki/GitHub-Domain)
-- [Scores Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Scores-Domain)
-- [Rights Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Rights-Domain)
-- [Archive Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Archive-Domain)
-- [Last.fm Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Last.fm-Domain)
-- [MusicBrainz Domain](https://github.com/magmacrunchmedia/magmascript/wiki/MusicBrainz-Domain)
-- [Search Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Search-Domain)
-- [Media Domain](https://github.com/magmacrunchmedia/magmascript/wiki/Media-Domain)
-- [Example Scripts](https://github.com/magmacrunchmedia/magmascript/wiki/Example-Scripts)
-- [Asthenosphere](https://github.com/magmacrunchmedia/magmascript/wiki/Asthenosphere)
-- [Architecture](https://github.com/magmacrunchmedia/magmascript/wiki/Architecture)
+Full documentation on the [Wiki](https://github.com/magmacrunch-media/magmascript/wiki):
+- [MagmaScript Language](https://github.com/magmacrunch-media/magmascript/wiki/MagmaScript-Language)
+- [Configuration](https://github.com/magmacrunch-media/magmascript/wiki/Configuration)
+- [MCP Domain](https://github.com/magmacrunch-media/magmascript/wiki/MCP-Domain)
+- [Pi Domain](https://github.com/magmacrunch-media/magmascript/wiki/Pi-Domain)
+- [MC1 Domain](https://github.com/magmacrunch-media/magmascript/wiki/MC1-Domain)
+- [Mac Domain](https://github.com/magmacrunch-media/magmascript/wiki/Mac-Domain)
+- [GitHub Domain](https://github.com/magmacrunch-media/magmascript/wiki/GitHub-Domain)
+- [Scores Domain](https://github.com/magmacrunch-media/magmascript/wiki/Scores-Domain)
+- [Rights Domain](https://github.com/magmacrunch-media/magmascript/wiki/Rights-Domain)
+- [Archive Domain](https://github.com/magmacrunch-media/magmascript/wiki/Archive-Domain)
+- [Last.fm Domain](https://github.com/magmacrunch-media/magmascript/wiki/Last.fm-Domain)
+- [MusicBrainz Domain](https://github.com/magmacrunch-media/magmascript/wiki/MusicBrainz-Domain)
+- [Search Domain](https://github.com/magmacrunch-media/magmascript/wiki/Search-Domain)
+- [Media Domain](https://github.com/magmacrunch-media/magmascript/wiki/Media-Domain)
+- [Example Scripts](https://github.com/magmacrunch-media/magmascript/wiki/Example-Scripts)
+- [Asthenosphere](https://github.com/magmacrunch-media/magmascript/wiki/Asthenosphere)
+- [Architecture](https://github.com/magmacrunch-media/magmascript/wiki/Architecture)
 
 ## License
 

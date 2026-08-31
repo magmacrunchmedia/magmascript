@@ -19,7 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 Host objects handed to a script were half-usable: you could call their methods
 and read their fields, but not read their properties or change anything. This
 release closes that gap and lets packages outside this repo publish domains of
-their own — the first is [texastoast](https://github.com/magmacrunchmedia/texastoast),
+their own — the first is [texastoast](https://github.com/magmacrunch-media/texastoast),
 which exposes a game engine as the `toast` domain.
 
 ### Added
@@ -364,15 +364,15 @@ Other additions:
 - Cache management with TTL support
 - Domain-first CLI architecture
 
-[3.0.0]: https://github.com/magmacrunchmedia/magmascript/compare/v2.3.0...v3.0.0
-[2.2.0]: https://github.com/magmacrunchmedia/magmascript/compare/v2.1.0...v2.2.0
-[2.1.0]: https://github.com/magmacrunchmedia/magmascript/compare/v2.0.1...v2.1.0
-[2.0.1]: https://github.com/magmacrunchmedia/magmascript/compare/v2.0.0...v2.0.1
-[2.0.0]: https://github.com/magmacrunchmedia/magmascript/compare/v1.6.0...v2.0.0
-[1.6.0]: https://github.com/magmacrunchmedia/magmascript/compare/v1.5.0...v1.6.0
-[1.5.0]: https://github.com/magmacrunchmedia/magmascript/compare/v1.4.0...v1.5.0
-[1.4.0]: https://github.com/magmacrunchmedia/magmascript/compare/v1.3.0...v1.4.0
-[1.3.0]: https://github.com/magmacrunchmedia/magmascript/compare/v1.2.0...v1.3.0
-[1.2.0]: https://github.com/magmacrunchmedia/magmascript/compare/v1.1.0...v1.2.0
-[1.1.0]: https://github.com/magmacrunchmedia/magmascript/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/magmacrunchmedia/magmascript/releases/tag/v1.0.0
+[3.0.0]: https://github.com/magmacrunch-media/magmascript/compare/v2.3.0...v3.0.0
+[2.2.0]: https://github.com/magmacrunch-media/magmascript/compare/v2.1.0...v2.2.0
+[2.1.0]: https://github.com/magmacrunch-media/magmascript/compare/v2.0.1...v2.1.0
+[2.0.1]: https://github.com/magmacrunch-media/magmascript/compare/v2.0.0...v2.0.1
+[2.0.0]: https://github.com/magmacrunch-media/magmascript/compare/v1.6.0...v2.0.0
+[1.6.0]: https://github.com/magmacrunch-media/magmascript/compare/v1.5.0...v1.6.0
+[1.5.0]: https://github.com/magmacrunch-media/magmascript/compare/v1.4.0...v1.5.0
+[1.4.0]: https://github.com/magmacrunch-media/magmascript/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/magmacrunch-media/magmascript/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/magmacrunch-media/magmascript/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/magmacrunch-media/magmascript/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/magmacrunch-media/magmascript/releases/tag/v1.0.0

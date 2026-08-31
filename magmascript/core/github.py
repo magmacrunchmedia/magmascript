@@ -35,7 +35,7 @@ class GitHubClient:
 
     BASE_URL = "https://api.github.com"
 
-    def __init__(self, token: str, owner: str = "magmacrunchmedia", repo: str = "magmacrunch.com"):
+    def __init__(self, token: str, owner: str = "magmacrunch-media", repo: str = "magmacrunch.com"):
         self.token = token
         self.owner = owner
         self.repo = repo

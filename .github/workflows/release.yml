@@ -44,7 +44,7 @@ jobs:
   # Tell the website to re-embed the playground interpreter now rather than at
   # its weekly backstop sync. A separate job from update-tap so a tap failure
   # can't block the playground. Needs WEBSITE_DISPATCH_TOKEN: a fine-grained
-  # PAT for magmacrunchmedia/magmacrunch.com with Contents read/write.
+  # PAT for magmacrunch-media/magmacrunch.com with Contents read/write.
   sync-playground:
     needs: publish
     if: always() && needs.publish.result == 'success' || github.event_name == 'workflow_dispatch'
@@ -80,7 +80,7 @@ jobs:
           curl -sS -f -X POST \
             -H "Authorization: Bearer ${{ secrets.WEBSITE_DISPATCH_TOKEN }}" \
             -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/magmacrunchmedia/magmacrunch.com/dispatches \
+            https://api.github.com/repos/magmacrunch-media/magmacrunch.com/dispatches \
             -d '{"event_type":"magmascript-release","client_payload":{"version":"${{ steps.version.outputs.version }}"}}'
 
   update-tap:
@@ -91,7 +91,7 @@ jobs:
       - name: Checkout tap repo
         uses: actions/checkout@v4
         with:
-          repository: magmacrunchmedia/homebrew-tap
+          repository: magmacrunch-media/homebrew-tap
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
           path: tap
 

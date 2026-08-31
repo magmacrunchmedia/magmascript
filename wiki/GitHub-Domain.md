@@ -34,7 +34,7 @@ Requires `GITHUB_TOKEN` environment variable or `[gh]` section in config.toml:
 ```toml
 [gh]
 token = "ghp_..."
-owner = "magmacrunchmedia"
+owner = "magmacrunch-media"
 repo = "magmacrunch.com"
 ```
 

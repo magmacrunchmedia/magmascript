@@ -49,9 +49,9 @@ magmascript = "magmascript.cli:main"
 
 [project.urls]
 Homepage = "https://magmacrunch.com/ware/magmascript/"
-Documentation = "https://github.com/magmacrunchmedia/magmascript/wiki"
-Repository = "https://github.com/magmacrunchmedia/magmascript"
-Changelog = "https://github.com/magmacrunchmedia/magmascript/blob/main/CHANGELOG.md"
+Documentation = "https://github.com/magmacrunch-media/magmascript/wiki"
+Repository = "https://github.com/magmacrunch-media/magmascript"
+Changelog = "https://github.com/magmacrunch-media/magmascript/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 include = ["magmascript*"]

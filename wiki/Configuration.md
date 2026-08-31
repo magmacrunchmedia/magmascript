@@ -45,7 +45,7 @@ This is the recommended way to set up magmascript on a new machine.
 | `MAGMA_PI_HOST` | Pi hostname | `your-pi-host` |
 | `MAGMA_PI_USER` | Pi SSH user | `jake` |
 | `MAGMA_GITHUB_TOKEN` | GitHub token | — |
-| `MAGMA_GITHUB_OWNER` | GitHub owner | `magmacrunchmedia` |
+| `MAGMA_GITHUB_OWNER` | GitHub owner | `magmacrunch-media` |
 | `MAGMA_GITHUB_REPO` | GitHub repo | `magmacrunch.com` |
 | `MAGMA_PROJECT_ROOT` | Project root path | — |
 | `DISCORD_WEBHOOK_URL` | Discord webhook | — |
@@ -66,7 +66,7 @@ user = "jake"
 
 [gh]
 token = "ghp_..."
-owner = "magmacrunchmedia"
+owner = "magmacrunch-media"
 repo = "magmacrunch.com"
 
 [project]
@@ -135,7 +135,7 @@ api_key = "abc123"
 
 [gh]
 token = "ghp_..."
-owner = "magmacrunchmedia"
+owner = "magmacrunch-media"
 repo = "magmacrunch.com"
 
 [project]
