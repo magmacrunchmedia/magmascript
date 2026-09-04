@@ -14,8 +14,13 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       contents: write
+      # Trusted Publishing: GitHub mints a short-lived identity token that PyPI
+      # verifies against a publisher configured on pypi.org. No API token, no
+      # repository secret, nothing to rotate. Note the action falls back to a
+      # password whenever one is passed and ignores OIDC entirely, so adding a
+      # `password:` here silently turns this back into token auth.
+      id-token: write
     steps:
       - uses: actions/checkout@v4
 
@@ -33,7 +38,6 @@ jobs:
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
           skip-existing: true
 
       - name: Create GitHub Release
